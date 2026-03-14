@@ -25,6 +25,13 @@ def calculate_position_size(
     Returns:
         Normalised lot size clamped to broker min/max/step.
     """
+    # ── Minimum SL distance guard ─────────────────────────────────────────────
+    # Never allow SL closer than 5 pips (0.00050) on EURUSD
+    # Prevents tiny SL distances producing insane lot sizes
+    MIN_SL_DISTANCE = 0.00050
+    if sl_distance < MIN_SL_DISTANCE:
+        sl_distance = MIN_SL_DISTANCE
+
     if sl_distance <= 0:
         return 0.01
 
@@ -49,7 +56,12 @@ def calculate_position_size(
     # Clamp to min/max
     lot_size = max(lot_size, symbol_info.volume_min)
     lot_size = min(lot_size, symbol_info.volume_max)
-
+    
+    # ── Hard cap: never more than 0.5 lots per trade on small accounts ────────
+    MAX_LOTS = 0.50
+    lot_size = min(lot_size, MAX_LOTS)
+    # ─────────────────────────────────────────────────────────────────────────
+    
     return lot_size
 
 

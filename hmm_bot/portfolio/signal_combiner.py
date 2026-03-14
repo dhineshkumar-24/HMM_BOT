@@ -143,7 +143,7 @@ class SignalCombiner:
         combined = float(np.clip(combined, -1.0, 1.0))
 
         # ── Direction decision ────────────────────────────────────────────────
-        threshold = self.alpha_cfg.get("combined_threshold", 0.15)
+        threshold = self.alpha_cfg.get("combined_threshold", 0.40)
         if combined >= threshold:
             direction = "BUY"
         elif combined <= -threshold:

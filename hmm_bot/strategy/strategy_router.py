@@ -77,8 +77,8 @@ class StrategyRouter:
         self._routing: dict[tuple, object] = {
             (SESSION_ASIAN,  REGIME_MEAN_REVERT): self._mean_rev,
             (SESSION_ASIAN,  None):               self._mean_rev,   # warm-up
-            (SESSION_LONDON, REGIME_TRENDING):    self._momentum,
-            (SESSION_NY,     REGIME_TRENDING):    self._momentum,
+            #(SESSION_LONDON, REGIME_TRENDING):    self._momentum,
+            #(SESSION_NY,     REGIME_TRENDING):    self._momentum,
         }
 
         logger.info(
@@ -173,20 +173,7 @@ class StrategyRouter:
                 f"below threshold, no trade."
             )
             return None
-            atr = df['atr'] if 'atr' in df.columns else (df['high'] - df['low']).rolling(14).mean()
-            vaz = volatility_adjusted_zscore(df['close'], atr)
-            vaz_thresh = alpha_config.get('vaz_threshold', 1.5)
-            if abs(vaz.iloc[-1]) < vaz_thresh:
-                logger.debug(f"MeanReversionAlpha (VAZ {abs(vaz.iloc[-1]):.2f}) < {vaz_thresh} — blocked.")
-                return None
-                
-        elif regime == REGIME_TRENDING:
-            log_ret = np.log(df['close'] / df['close'].shift(1))
-            tsm = time_series_momentum(log_ret)
-            tsm_thresh = alpha_config.get('tsm_threshold', 5)
-            if abs(tsm.iloc[-1]) < tsm_thresh:
-                logger.debug(f"MomentumAlpha (TSM {abs(tsm.iloc[-1]):.2f}) < {tsm_thresh} — blocked.")
-                return None
+        
 
         # ── Generate signal ────────────────────────────────────────────────────
         strategy_name = type(strategy).__name__
