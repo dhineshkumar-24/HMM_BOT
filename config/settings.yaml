@@ -39,3 +39,8 @@ execution:
   order_comment: "Mean Reversion Bot"
   slippage_pips: 20
   deviation: 20
+
+alpha:
+  vaz_threshold: 1.5
+  tsm_threshold: 5
+  signal_decay_bars: 5

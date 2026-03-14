@@ -30,9 +30,21 @@ class Executor:
                 type_op = mt5.ORDER_TYPE_SELL_LIMIT
 
         # Current Price if Market
+        tick = mt5.symbol_info_tick(symbol)
         if not price:
-            tick = mt5.symbol_info_tick(symbol)
             price = tick.ask if signal == "BUY" else tick.bid
+            
+        # Slippage Model: Reduce lot size if spread is high
+        spread = tick.ask - tick.bid
+        max_spread_pips = CONFIG.get('filters', {}).get('max_spread_pips', 2.0)
+        max_spread = max_spread_pips * 0.0001
+        
+        if spread > max_spread:
+            logger.warning(f"Spread {spread:.5f} exceeds max {max_spread:.5f}. Reducing lot size.")
+            volume = round(float(volume) * 0.5, 2)
+            if volume <= 0:
+                logger.warning("Volume too small after slippage penalty. Aborting.")
+                return None
             
         request = {
             "action": action,

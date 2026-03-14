@@ -319,3 +319,35 @@ def _regime_confidence(
         return conf
     except Exception:
         return 1.0
+
+
+def run_walk_forward_backtest(
+    df: pd.DataFrame,
+    config: dict,
+    train_bars: int = 3000,
+    test_bars: int = 1000,
+    **kwargs
+) -> list[BacktestResult]:
+    """
+    Enforces walk-forward validation by splitting data into rolling windows.
+    Train: bars 1-3000 -> Test: bars 3001-4000
+    Train: bars 1001-4000 -> Test: bars 4001-5000 ...
+    """
+    results = []
+    total_bars = len(df)
+    
+    step_size = test_bars
+    for start_train in range(0, total_bars - train_bars - test_bars + 1, step_size):
+        end_train = start_train + train_bars
+        end_test = end_train + test_bars
+        
+        df_train = df.iloc[start_train:end_train].reset_index(drop=True)
+        df_test = df.iloc[end_train:end_test].reset_index(drop=True)
+        
+        label = f"WF_Test_{end_train}_to_{end_test}"
+        print(f"--- Running Walk-Forward: {label} ---")
+        
+        res = run_backtest(df=df_test, config=config, label=label, **kwargs)
+        results.append(res)
+        
+    return results

@@ -31,4 +31,11 @@ class OrderValidator:
             logger.warning(f"Daily Drawdown Limit Reached: {current_dd*100:.2f}%")
             return False
 
+        # 3. Signal Crowding Check
+        # Hard limits on repeated signals to prevent over-trading the same setup
+        signal_crowding_limit = self.config.get('alpha', {}).get('signal_decay_bars', 5)
+        if getattr(self, '_recent_signals_count', 0) >= signal_crowding_limit:
+            logger.warning("Signal crowding detected! Rejecting trade.")
+            return False
+
         return True

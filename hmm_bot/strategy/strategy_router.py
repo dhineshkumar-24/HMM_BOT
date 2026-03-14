@@ -32,6 +32,7 @@ from __future__ import annotations
 import pandas as pd
 from typing import Optional
 import numpy as np
+from portfolio.signal_combiner import SignalCombiner
 
 from strategy.mean_reversion import MeanReversionStrategy
 from strategy.momentum       import MomentumStrategy
@@ -40,6 +41,8 @@ from core.hmm_model          import (
     REGIME_TRENDING,
     REGIME_HIGH_VOL,
 )
+from research.alpha.mean_reversion_alpha import volatility_adjusted_zscore
+from research.alpha.momentum_alpha import time_series_momentum
 from utils.helpers import (
     detect_session,
     check_trading_session,
@@ -67,6 +70,7 @@ class StrategyRouter:
         # Instantiate sub-strategies
         self._mean_rev  = MeanReversionStrategy(config)
         self._momentum  = MomentumStrategy(config)
+        self._combiner = SignalCombiner(config) 
 
         # Routing table: (session, regime) → strategy instance
         # None regime = warm-up → use mean_reversion as safe default
@@ -158,6 +162,31 @@ class StrategyRouter:
                 f"No strategy for session={session}, regime={regime} — no trade."
             )
             return None
+
+        # ── Alpha Signal Filtering (via SignalCombiner) ────────────────────────
+        combined_scores = self._combiner.combine(df, regime=regime)
+
+        # If combiner has no directional view, skip this bar
+        if combined_scores.get("direction") is None:
+            logger.debug(
+                f"Combiner score={combined_scores['combined']:.3f} — "
+                f"below threshold, no trade."
+            )
+            return None
+            atr = df['atr'] if 'atr' in df.columns else (df['high'] - df['low']).rolling(14).mean()
+            vaz = volatility_adjusted_zscore(df['close'], atr)
+            vaz_thresh = alpha_config.get('vaz_threshold', 1.5)
+            if abs(vaz.iloc[-1]) < vaz_thresh:
+                logger.debug(f"MeanReversionAlpha (VAZ {abs(vaz.iloc[-1]):.2f}) < {vaz_thresh} — blocked.")
+                return None
+                
+        elif regime == REGIME_TRENDING:
+            log_ret = np.log(df['close'] / df['close'].shift(1))
+            tsm = time_series_momentum(log_ret)
+            tsm_thresh = alpha_config.get('tsm_threshold', 5)
+            if abs(tsm.iloc[-1]) < tsm_thresh:
+                logger.debug(f"MomentumAlpha (TSM {abs(tsm.iloc[-1]):.2f}) < {tsm_thresh} — blocked.")
+                return None
 
         # ── Generate signal ────────────────────────────────────────────────────
         strategy_name = type(strategy).__name__

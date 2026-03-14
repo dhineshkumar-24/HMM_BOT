@@ -32,6 +32,12 @@ FEATURE_COLS = [
     "atr_norm",
     "volume_zscore",
     "momentum",
+    "skewness",
+    "kurtosis",
+    "drawdown_pct",
+    "volume_trend",
+    "ema_slope",
+    "hurst_rolling",
 ]
 
 
@@ -121,6 +127,39 @@ def _momentum(close: pd.Series, period: int = 10) -> pd.Series:
     return (close / close.shift(period)) - 1
 
 
+def _skewness(log_ret: pd.Series, window: int = 20) -> pd.Series:
+    """Rolling skewness of log returns (negative = downside tail risk)."""
+    return log_ret.rolling(window=window).skew()
+
+
+def _kurtosis(log_ret: pd.Series, window: int = 20) -> pd.Series:
+    """Rolling kurtosis of log returns (high = fat tails)."""
+    return log_ret.rolling(window=window).kurt()
+
+
+def _drawdown_pct(close: pd.Series, window: int = 20) -> pd.Series:
+    """Percentage drawdown from recent rolling high."""
+    rolling_max = close.rolling(window=window).max()
+    return (close - rolling_max) / rolling_max
+
+
+def _volume_trend(volume: pd.Series, close: pd.Series, window: int = 20) -> pd.Series:
+    """Rolling correlation between volume and close price."""
+    return volume.rolling(window=window).corr(close)
+
+
+def _ema_slope(close: pd.Series, span: int = 50) -> pd.Series:
+    """Normalized slope of the EMA50."""
+    ema = close.ewm(span=span, adjust=False).mean()
+    return ema.diff() / close.shift(1)
+
+
+def _hurst_rolling(close: pd.Series, window: int = 100) -> pd.Series:
+    """Rolling Hurst Exponent."""
+    from utils.indicators import compute_hurst
+    return compute_hurst(close)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Public API
 # ─────────────────────────────────────────────────────────────────────────────
@@ -167,6 +206,13 @@ def build_feature_matrix(
     vol_z    = _volume_zscore(df["tick_volume"], window=vol_window)
     mom      = _momentum(df["close"], period=mom_period)
 
+    skew     = _skewness(log_ret, window=vol_window)
+    kurt     = _kurtosis(log_ret, window=vol_window)
+    dd_pct   = _drawdown_pct(df["close"], window=vol_window)
+    vol_t    = _volume_trend(df["tick_volume"], df["close"], window=vol_window)
+    ema_s    = _ema_slope(df["close"], span=50)
+    hurst_r  = _hurst_rolling(df["close"], window=100)
+
     # ── Assemble ──────────────────────────────────────────────────────────────
     features = pd.DataFrame(
         {
@@ -177,6 +223,12 @@ def build_feature_matrix(
             "atr_norm":      atr_n,
             "volume_zscore": vol_z,
             "momentum":      mom,
+            "skewness":      skew,
+            "kurtosis":      kurt,
+            "drawdown_pct":  dd_pct,
+            "volume_trend":  vol_t,
+            "ema_slope":     ema_s,
+            "hurst_rolling": hurst_r,
         },
         index=df.index,
     )

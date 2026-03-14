@@ -57,8 +57,9 @@ class TradeManager:
                     if (datetime.now() - deal_time).total_seconds() < 15:
                         res = "WIN" if deal.profit > 0 else "LOSS"
                         logger.info(
-                            f"{res} | Ticket: {deal.position_id} | "
-                            f"Price: {deal.price:.5f} | PnL: ${deal.profit:.2f} | "
+                            f"[TC/FILL] {res} | Ticket: {deal.position_id} | "
+                            f"Fill Price: {deal.price:.5f} | Commission: {deal.commission:.2f} | "
+                            f"Swap: {deal.swap:.2f} | Fee: {deal.fee:.2f} | PnL: ${deal.profit:.2f} | "
                             f"Comment: {deal.comment}"
                         )
     def close_all_positions(self):
