@@ -1,0 +1,8 @@
+MetaTrader5
+pandas
+numpy
+pyyaml
+matplotlib
+hmmlearn>=0.3.0
+scikit-learn>=1.3.0
+joblib>=1.3.0

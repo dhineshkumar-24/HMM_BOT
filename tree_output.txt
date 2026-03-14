@@ -1,0 +1,85 @@
+mt5_trading_bot
+├── .gitignore
+├── README.md
+├── backtest.py
+├── config
+│   ├── settings.yaml
+│   └── symbols.yaml
+├── core
+│   ├── data_feed.py
+│   ├── execution.py
+│   ├── mt5_connector.py
+│   └── risk.py
+├── hmm_bot
+│   ├── analytics
+│   │   ├── __init__.py
+│   │   └── performance_tracker.py
+│   ├── config
+│   │   └── settings.yaml
+│   ├── config.py
+│   ├── core
+│   │   ├── __init__.py
+│   │   ├── data_feed.py
+│   │   ├── execution.py
+│   │   ├── hmm_model.py
+│   │   ├── regime_filters.py
+│   │   └── risk.py
+│   ├── main.py
+│   ├── models
+│   │   ├── __init__.py
+│   │   ├── hmm.pkl
+│   │   └── hmm_model.py
+│   ├── requirements.txt
+│   ├── research
+│   │   ├── __init__.py
+│   │   ├── backtester.py
+│   │   ├── data_loader.py
+│   │   ├── performance_metrics.py
+│   │   ├── report_generator.py
+│   │   ├── reports
+│   │   │   ├── EURUSD_backtest_20260314_121105_distribution.png
+│   │   │   ├── EURUSD_backtest_20260314_121105_drawdown.png
+│   │   │   ├── EURUSD_backtest_20260314_121105_equity.png
+│   │   │   ├── EURUSD_backtest_20260314_121105_metrics.csv
+│   │   │   └── EURUSD_backtest_20260314_121105_trades.csv
+│   │   ├── trade_simulator.py
+│   │   └── walk_forward.py
+│   ├── risk_controls
+│   │   ├── __init__.py
+│   │   ├── drawdown_monitor.py
+│   │   └── loss_streak_monitor.py
+│   ├── run_backtest.py
+│   ├── services
+│   │   ├── __init__.py
+│   │   └── trade_manager.py
+│   ├── strategy
+│   │   ├── __init__.py
+│   │   ├── mean_reversion.py
+│   │   ├── momentum.py
+│   │   ├── strategy_base.py
+│   │   └── strategy_router.py
+│   ├── train_hmm.py
+│   └── utils
+│       ├── __init__.py
+│       ├── features.py
+│       ├── helpers.py
+│       ├── indicators.py
+│       ├── logger.py
+│       └── mt5_connector.py
+├── main.py
+├── models
+│   └── hmm.pkl
+├── print_tree.py
+├── requirements.txt
+├── services
+│   ├── order_validator.py
+│   └── trade_manager.py
+├── strategy
+│   ├── mean_reversion.py
+│   └── strategy_base.py
+├── tree_output.txt
+└── utils
+    ├── helpers.py
+    ├── indicators.py
+    ├── logger.py
+    └── session_filter.py

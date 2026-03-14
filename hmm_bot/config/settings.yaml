@@ -1,0 +1,86 @@
+project:
+  name: "HMM Adaptive Trading Bot"
+  version: "2.0.0"
+  magic_number: 234567
+
+trading:
+  symbol: "EURUSD"
+  timeframe: "M1"
+  risk_per_trade: 0.01          # 1 % per trade
+  max_daily_drawdown_pct: 0.03   # 3% (legacy key — also in risk:)
+  max_total_drawdown_pct: 0.15   # 15% (legacy key)
+  risk_reward_ratio: 2.0
+  leverage: 100
+
+# ── Strategy Parameters ───────────────────────────────────────────────────────
+strategy:
+  # Shared
+  rsi_period: 14
+  atr_period: 14
+  adx_period: 10
+  vwap_window: 21
+  hurst_threshold: 0.45
+
+  # Mean Reversion (Asian + MEAN_REVERT regime)
+  mean_reversion:
+    z_score_trigger: 2.3         # |Z| >= this to consider entry
+    z_score_exit: 0.0            # Z returns here → TP = rolling mean
+    rsi_overbought: 70           # RSI must exceed this for SELL
+    rsi_oversold: 30             # RSI must be below this for BUY
+    ema_slope_flat: 0.00007      # |EMA50 slope| must be <= this (flat)
+    adx_max: 20                  # ADX must be < this (no strong trend)
+    sl_atr_mult: 2.0             # SL = ATR * sl_atr_mult
+    trail_atr_mult: 1.5          # Trailing stop = ATR * trail_atr_mult
+
+  # Momentum (London/NY + TRENDING regime)
+  momentum:
+    adx_min: 20                  # ADX must be >= this (trending)
+    ema_fast: 9                  # Fast EMA for trend direction
+    ema_slow: 50                 # Slow EMA for baseline trend
+    rsi_trend_low: 37            # RSI long filter (> 40 for BUY)
+    rsi_trend_high: 65           # RSI short filter (< 60 for SELL)
+    sl_atr_mult: 1.8             # SL = ATR * sl_atr_mult
+    tp_atr_mult: 3.0             # TP = ATR * tp_atr_mult
+    trail_atr_mult: 1.5          # Trailing stop = ATR * trail_atr_mult
+
+# ── Session Windows (broker candle time) ─────────────────────────────────────
+sessions:
+  asian_start: "02:00"
+  asian_end: "09:00"
+  london_start: "09:00"
+  london_end: "12:00"
+  london_mid_start: "13:00"      # Kept for legacy helper function
+  london_mid_end: "15:00"
+  newyork_start: "14:00"
+  newyork_end: "21:00"
+
+filters:
+  max_spread_pips: 2.0
+  min_volatility_percentile: 0.2
+  max_volatility_percentile: 0.8
+
+execution:
+  order_comment: "HMM Bot"
+  slippage_pips: 20
+  deviation: 20
+
+# ── Risk Management ──────────────────────────────────────────────────────────
+risk:
+  risk_per_trade: 0.01            # 1% risk per trade
+  max_daily_drawdown_pct: 0.03     # 3%  — disable today
+  max_account_drawdown_pct: 0.15   # 15% — permanent shutdown
+  max_consecutive_losses: 2        # Disable day after 2 SLs in a row
+
+# ── HMM Regime Detection ──────────────────────────────────────────────────────
+hmm:
+  n_components: 3
+  n_iter: 100
+  covariance_type: "full"
+  confidence_threshold: 0.62
+  regime_names:
+    0: "mean_reverting"
+    1: "trending"
+    2: "high_volatility"
+  model_path: "models/hmm.pkl"
+  feature_lookback: 5000
+  retrain_interval: 1000
