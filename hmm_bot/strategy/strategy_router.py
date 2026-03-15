@@ -68,22 +68,33 @@ class StrategyRouter:
         self.config = config
 
         # Instantiate sub-strategies
-        self._mean_rev  = MeanReversionStrategy(config)
-        self._momentum  = MomentumStrategy(config)
-        self._combiner = SignalCombiner(config) 
+        self._mean_rev = MeanReversionStrategy(config)
+        self._momentum = MomentumStrategy(config)
+        self._combiner = SignalCombiner(config)
 
-        # Routing table: (session, regime) → strategy instance
-        # None regime = warm-up → use mean_reversion as safe default
+        # ── Routing table: (session, regime) → strategy instance ──────────────
+        # None regime = warm-up period → default to mean-reversion (safest)
+        # HIGH_VOL (2) is intentionally absent → falls through to None → no trade
         self._routing: dict[tuple, object] = {
-            (SESSION_ASIAN,  REGIME_MEAN_REVERT): self._mean_rev,
-            (SESSION_ASIAN,  None):               self._mean_rev,   # warm-up
-            #(SESSION_LONDON, REGIME_TRENDING):    self._momentum,
-            #(SESSION_NY,     REGIME_TRENDING):    self._momentum,
+        # Asian + mean-revert → mean reversion strategy
+        (SESSION_ASIAN,  REGIME_MEAN_REVERT): self._mean_rev,
+        (SESSION_ASIAN,  None):               self._mean_rev,
+
+        # London/NY + trending → alpha strategy
+        (SESSION_LONDON, REGIME_TRENDING):    self._momentum,
+        (SESSION_NY,     REGIME_TRENDING):    self._momentum,
+
+        # NEW: also trade mean-revert regime with alpha in London/NY
+        # Alpha mean-reversion signal works in all volatility environments
+        (SESSION_LONDON, REGIME_MEAN_REVERT): self._momentum,
+        (SESSION_NY,     REGIME_MEAN_REVERT): self._momentum,
         }
 
         logger.info(
             "StrategyRouter ready | "
-            "ASIAN+MeanRevert→MeanRev | LONDON/NY+Trending→Momentum"
+            "ASIAN+MeanRevert→MeanRev | "
+            "LONDON+Trending→Momentum | "
+            "NY+Trending→Momentum"
         )
 
     # ── Public API ─────────────────────────────────────────────────────────────

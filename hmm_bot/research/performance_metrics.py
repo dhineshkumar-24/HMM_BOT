@@ -36,6 +36,7 @@ MIN_TRADES        = 30
 def compute_metrics(
     trade_profits: list[float],
     annual_factor: int = 252,
+    initial_balance: float = 10_000.0,
 ) -> dict:
     """
     Compute full performance metrics from a list of per-trade PnL values.
@@ -44,6 +45,7 @@ def compute_metrics(
         trade_profits: Realised net PnL for every closed trade (after costs).
         annual_factor: Periods per year for Sharpe/Sortino annualisation.
                        Use 252 for daily, 1440 for M1 bars, etc.
+        initial_balance: Starting account balance for normalizing drawdown.
 
     Returns:
         Dict with all metrics. All rates are 0.0–1.0 (not percentage).
@@ -84,7 +86,7 @@ def compute_metrics(
 
     # ── Equity curve & max drawdown ────────────────────────────────────────────
     equity_curve = np.cumsum(profits)
-    max_dd       = _max_drawdown(equity_curve)
+    max_dd = _max_drawdown(equity_curve, initial_balance=initial_balance)
 
     return {
         "total_trades":   total_trades,
@@ -162,16 +164,23 @@ def print_metrics(metrics: dict, label: str = "BACKTEST RESULTS") -> None:
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
-def _max_drawdown(equity_curve: np.ndarray) -> float:
-    """Maximum percentage drawdown from running peak."""
+def _max_drawdown(equity_curve: np.ndarray, initial_balance: float = 10_000.0) -> float:
+    """
+    Maximum percentage drawdown from running peak.
+    Normalized by initial account balance — not by PnL peak.
+    This prevents division by near-zero when all trades lose.
+    """
     if len(equity_curve) == 0:
         return 0.0
-    peak   = np.maximum.accumulate(equity_curve)
-    # Avoid division by zero when peak is zero (no profits yet)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        dd = np.where(peak != 0, (peak - equity_curve) / np.abs(peak), 0.0)
-    return float(dd.max()) if len(dd) > 0 else 0.0
 
+    # equity_curve is cumulative PnL — convert to absolute balance
+    abs_equity = initial_balance + equity_curve   # e.g. 10000 + (-9.29) = 9990.71
+
+    peak = np.maximum.accumulate(abs_equity)
+
+    # peak is always >= initial_balance at start, so no division by zero
+    dd = (peak - abs_equity) / peak
+    return float(dd.max()) if len(dd) > 0 else 0.0
 
 def _empty_metrics() -> dict:
     return {

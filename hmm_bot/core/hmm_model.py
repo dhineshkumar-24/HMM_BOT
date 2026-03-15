@@ -132,6 +132,7 @@ class HMMRegimeDetector:
         self._scaler         = None   # sklearn.StandardScaler
         self._is_trained     = False
         self._regime_history: list[int] = []
+        self._label_map: dict[int, int]  = {0: 0, 1: 1, 2: 2}  # identity until trained
 
         self._warmup_logged = False
         self._last_gate_reason = None
@@ -214,6 +215,8 @@ class HMMRegimeDetector:
             f"| Converged: {best_model.monitor_.converged}"
         )
         self._log_model_summary()
+        # ── Align learned state integers to economic regime labels ─────────────
+        self._label_map = self._align_state_labels()
 
     # ── Prediction ────────────────────────────────────────────────────────────
 
@@ -286,9 +289,12 @@ class HMMRegimeDetector:
             posteriors[np.arange(len(X_scaled)), state_sequence] = 1.0
 
         # Current bar = last observation
-        current_state = int(state_sequence[-1])
+        raw_state     = int(state_sequence[-1])
         current_probs = posteriors[-1]                          # shape (n_states,)
-        confidence    = float(current_probs[current_state])
+        confidence    = float(current_probs[raw_state])
+
+        # Translate learned state integer → canonical economic regime label
+        current_state = self._label_map.get(raw_state, raw_state)
 
         return current_state, confidence, current_probs
 
@@ -375,6 +381,7 @@ class HMMRegimeDetector:
             "scaler":     self._scaler,
             "n_states":   self.n_states,
             "features":   FEATURE_COLS,
+            "label_map":  self._label_map,   # ← persist alignment
         }
         joblib.dump(payload, target)
         logger.info(f"HMM model saved to: {target}")
@@ -404,6 +411,7 @@ class HMMRegimeDetector:
             self._model      = payload["model"]
             self._scaler     = payload["scaler"]
             self.n_states    = payload.get("n_states", self.n_states)
+            self._label_map  = payload.get("label_map", {0:0, 1:1, 2:2})  # ← restore
             self._is_trained = True
             logger.info(f"HMM model loaded from: {target}")
             return True
@@ -463,3 +471,60 @@ class HMMRegimeDetector:
             vals = "  ".join(f"{v:+.4f}" for v in mean_vec)
             logger.info(f"  State {i} means: [{vals}]")
         logger.info("──────────────────────────────────────")
+    def _align_state_labels(self) -> dict:
+        """
+        After training, map HMM integer states to economic regime labels
+        by examining the feature means of each learned state.
+
+        Economic rules:
+            HIGH_VOL      → state with highest realized_vol (feature index 1)
+            TRENDING      → state with highest positive autocorr (feature index 3)
+            MEAN_REVERT   → remaining state
+
+        Returns:
+            dict mapping {learned_state_int: canonical_regime_int}
+            e.g. {0: 2, 1: 0, 2: 1}  means learned-0→high_vol, learned-1→mean_rev, learned-2→trend
+        """
+        if self._model is None:
+            return {0: 0, 1: 1, 2: 2}  # identity if not trained
+
+        means = self._model.means_  # shape (n_states, n_features)
+
+        # Feature indices from FEATURE_COLS:
+        # 0=log_return, 1=realized_vol, 2=vol_of_vol, 3=autocorr, 4=atr_norm
+        IDX_RVOL   = 1   # realized volatility
+        IDX_AUTOCR = 3   # autocorrelation (positive = trending)
+        IDX_ATR    = 4   # normalized ATR
+
+        rvol_per_state   = means[:, IDX_RVOL]
+        autocr_per_state = means[:, IDX_AUTOCR]
+        atr_per_state    = means[:, IDX_ATR]
+
+        # Use a combined vol score: realized_vol + atr_norm
+        combined_vol = rvol_per_state + atr_per_state
+
+        # HIGH_VOL = highest combined volatility score
+        high_vol_state = int(np.argmax(combined_vol))
+
+        # TRENDING = highest autocorrelation AMONG remaining states
+        remaining = [i for i in range(self.n_states) if i != high_vol_state]
+        trending_state = remaining[int(np.argmax([autocr_per_state[i] for i in remaining]))]
+
+        # MEAN_REVERT = whatever is left
+        mean_rev_state = [i for i in range(self.n_states)
+                        if i not in (high_vol_state, trending_state)][0]
+
+        label_map = {
+            mean_rev_state: REGIME_MEAN_REVERT,   # 0
+            trending_state: REGIME_TRENDING,       # 1
+            high_vol_state: REGIME_HIGH_VOL,       # 2
+        }
+
+        logger.info("── State Label Alignment ─────────────────")
+        logger.info(f"  Learned state {high_vol_state} → HIGH_VOL     (vol={combined_vol[high_vol_state]:+.4f})")
+        logger.info(f"  Learned state {trending_state} → TRENDING     (autocorr={autocr_per_state[trending_state]:+.4f})")
+        logger.info(f"  Learned state {mean_rev_state} → MEAN_REVERT  (autocorr={autocr_per_state[mean_rev_state]:+.4f})")
+        logger.info("──────────────────────────────────────────")
+
+        return label_map
+

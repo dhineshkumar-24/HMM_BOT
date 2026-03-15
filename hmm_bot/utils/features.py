@@ -30,14 +30,14 @@ FEATURE_COLS = [
     "vol_of_vol",
     "autocorr",
     "atr_norm",
-    "volume_zscore",
     "momentum",
     "skewness",
     "kurtosis",
     "drawdown_pct",
-    "volume_trend",
     "ema_slope",
-    "hurst_rolling",
+    #"hurst_rolling",
+    #"volume_zscore",
+    #"volume_trend",
 ]
 
 
@@ -164,82 +164,116 @@ def _hurst_rolling(close: pd.Series, window: int = 100) -> pd.Series:
 # Public API
 # ─────────────────────────────────────────────────────────────────────────────
 
-def build_feature_matrix(
-    df: pd.DataFrame,
-    vol_window:   int = 20,
-    atr_period:   int = 14,
-    vol_lag:      int = 1,
-    autocorr_lag: int = 1,
-    mom_period:   int = 10,
-) -> pd.DataFrame:
-    """
-    Compute the 7-feature matrix from a raw OHLCV candle DataFrame.
-
-    The returned DataFrame has exactly FEATURE_COLS as columns.
-    All rows containing NaN (from warm-up periods) are dropped.
-
-    Args:
-        df:            Raw candle DataFrame with columns:
-                       open, high, low, close, tick_volume, time.
-        vol_window:    Rolling window for realized vol and vol-of-vol (bars).
-        atr_period:    ATR smoothing period (bars).
-        vol_lag:       Lag for vol-of-vol rolling window (same as vol_window).
-        autocorr_lag:  Autocorrelation lag (default 1 = lag-1).
-        mom_period:    Lookback for momentum rate-of-change (bars).
-
-    Returns:
-        pd.DataFrame of shape (n_valid_bars, 7) with FEATURE_COLS columns.
-        Index matches the input df index (for bar alignment).
-
-    Example:
-        >>> features = build_feature_matrix(df)
-        >>> X = features.values          # numpy array for HMM
-    """
+def build_feature_matrix(df, vol_window=20, atr_period=14,
+                          autocorr_lag=1, mom_period=10):
     df = df.copy()
 
-    # ── Raw computations ─────────────────────────────────────────────────────
-    log_ret  = _log_returns(df["close"])
-    rvol     = _realized_volatility(log_ret, window=vol_window)
-    vov      = _vol_of_vol(rvol, window=vol_window)
-    ac       = _autocorrelation(log_ret, lag=autocorr_lag, window=vol_window)
-    atr_n    = _atr_normalized(df, period=atr_period)
-    vol_z    = _volume_zscore(df["tick_volume"], window=vol_window)
-    mom      = _momentum(df["close"], period=mom_period)
+    log_ret = _log_returns(df["close"])
+    rvol    = _realized_volatility(log_ret, window=vol_window)
+    vov     = _vol_of_vol(rvol, window=vol_window)
+    ac      = _autocorrelation(log_ret, lag=autocorr_lag, window=vol_window)
+    atr_n   = _atr_normalized(df, period=atr_period)
+    mom     = _momentum(df["close"], period=mom_period)
+    skew    = _skewness(log_ret, window=vol_window)
+    kurt    = _kurtosis(log_ret, window=vol_window)
+    dd_pct  = _drawdown_pct(df["close"], window=vol_window)
+    ema_s   = _ema_slope(df["close"], span=50)
 
-    skew     = _skewness(log_ret, window=vol_window)
-    kurt     = _kurtosis(log_ret, window=vol_window)
-    dd_pct   = _drawdown_pct(df["close"], window=vol_window)
-    vol_t    = _volume_trend(df["tick_volume"], df["close"], window=vol_window)
-    ema_s    = _ema_slope(df["close"], span=50)
-    hurst_r  = _hurst_rolling(df["close"], window=100)
+    features = pd.DataFrame({
+        "log_return":   log_ret,
+        "realized_vol": rvol,
+        "vol_of_vol":   vov,
+        "autocorr":     ac,
+        "atr_norm":     atr_n,
+        "momentum":     mom,
+        "skewness":     skew,
+        "kurtosis":     kurt,
+        "drawdown_pct": dd_pct,
+        "ema_slope":    ema_s,
+    }, index=df.index)
 
-    # ── Assemble ──────────────────────────────────────────────────────────────
-    features = pd.DataFrame(
-        {
-            "log_return":    log_ret,
-            "realized_vol":  rvol,
-            "vol_of_vol":    vov,
-            "autocorr":      ac,
-            "atr_norm":      atr_n,
-            "volume_zscore": vol_z,
-            "momentum":      mom,
-            "skewness":      skew,
-            "kurtosis":      kurt,
-            "drawdown_pct":  dd_pct,
-            "volume_trend":  vol_t,
-            "ema_slope":     ema_s,
-            "hurst_rolling": hurst_r,
-        },
-        index=df.index,
-    )
-
-    # Drop NaN warm-up rows; drop any inf that can appear in extreme data
     features.replace([np.inf, -np.inf], np.nan, inplace=True)
     features.dropna(inplace=True)
-
     return features
 
 
 def get_feature_names() -> list[str]:
     """Return the canonical ordered list of feature column names."""
     return list(FEATURE_COLS)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Statistical Alpha Feature Matrix (NEW)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def build_alpha_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Statistical alpha features tuned for M1 EURUSD mean-reverting regime.
+
+    Key insight: On M1, 20-bar momentum picks up EXHAUSTED moves.
+    Use r60 (1-hour) for momentum — genuine directional flow.
+    Weight mean reversion highest — dominant M1 effect.
+    """
+    close   = df["close"]
+    log_ret = np.log(close / close.shift(1))
+
+    # ── Returns ───────────────────────────────────────────────────────────────
+    r5  = close.pct_change(5)    # 5-min pullback detector
+    r60 = close.pct_change(60)   # 1-hour trend (was r20 — too short)
+
+    # ── Volatility horizons ───────────────────────────────────────────────────
+    vol10 = log_ret.rolling(10).std()
+    vol50 = log_ret.rolling(50).std()
+
+    # ── Structural features ───────────────────────────────────────────────────
+    trend_strength = log_ret.rolling(20).corr(log_ret.shift(1))
+    vol_regime     = vol10 / vol50.replace(0, np.nan)
+
+    # ── Three alpha signals ───────────────────────────────────────────────────
+    # Alpha 1: SHORT-TERM MEAN REVERSION (dominant M1 effect)
+    # Fades overextended 5-bar moves back to mean
+    # Positive alpha_mr = price pulled back = expect bounce
+    alpha_mr  = -(r5 / vol10.replace(0, np.nan))
+
+    # Alpha 2: MEDIUM-TERM MOMENTUM (1-hour directional flow)
+    # r60 captures genuine order flow, not noise
+    # Positive alpha_mom = 1-hour uptrend = buy with trend
+    alpha_mom = r60 / vol50.replace(0, np.nan)
+
+    # Alpha 3: VOLATILITY EXPANSION (breakout / clustering)
+    # vol10 > vol50 means volatility expanding = directional move
+    alpha_vol = vol_regime - 1.0
+
+    # ── Z-score normalization (rolling 100-bar window) ────────────────────────
+    def rolling_zscore(s: pd.Series, window: int = 100) -> pd.Series:
+        m  = s.rolling(window).mean()
+        sd = s.rolling(window).std().replace(0, np.nan)
+        return (s - m) / sd
+
+    z_mr  = rolling_zscore(alpha_mr)
+    z_mom = rolling_zscore(alpha_mom)
+    z_vol = rolling_zscore(alpha_vol)
+
+    # ── Combined alpha — mean reversion weighted highest for M1 ───────────────
+    # Mean reversion (0.55): dominant M1 EURUSD regime
+    # Momentum (0.25):       1-hour trend as directional confirmation only
+    # Vol expansion (0.20):  breakout confirmation
+    combined = (0.55 * z_mr) + (0.25 * z_mom) + (0.20 * z_vol)
+
+    result = pd.DataFrame({
+        "r5":             r5,
+        "r60":            r60,
+        "vol10":          vol10,
+        "vol50":          vol50,
+        "trend_strength": trend_strength,
+        "vol_regime":     vol_regime,
+        "alpha_mr":       alpha_mr,
+        "alpha_mom":      alpha_mom,
+        "alpha_vol":      alpha_vol,
+        "z_mr":           z_mr,
+        "z_mom":          z_mom,
+        "z_vol":          z_vol,
+        "combined_alpha": combined,
+    }, index=df.index)
+
+    result.replace([np.inf, -np.inf], np.nan, inplace=True)
+    return result

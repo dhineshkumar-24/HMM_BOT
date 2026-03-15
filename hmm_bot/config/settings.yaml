@@ -21,6 +21,12 @@ strategy:
   vwap_window: 21
   hurst_threshold: 0.45
 
+  alpha:
+    threshold_percentile: 80
+    tp_vol_mult: 4.0
+    sl_vol_mult: 1.0
+    min_edge_pips: 0.00015
+
   # Mean Reversion (Asian + MEAN_REVERT regime)
   mean_reversion:
     z_score_trigger: 2.3         # |Z| >= this to consider entry
@@ -34,14 +40,14 @@ strategy:
 
   # Momentum (London/NY + TRENDING regime)
   momentum:
-    adx_min: 20                  # ADX must be >= this (trending)
-    ema_fast: 9                  # Fast EMA for trend direction
-    ema_slow: 50                 # Slow EMA for baseline trend
-    rsi_trend_low: 37            # RSI long filter (> 40 for BUY)
-    rsi_trend_high: 65           # RSI short filter (< 60 for SELL)
-    sl_atr_mult: 1.8             # SL = ATR * sl_atr_mult
-    tp_atr_mult: 3.0             # TP = ATR * tp_atr_mult
-    trail_atr_mult: 1.5          # Trailing stop = ATR * trail_atr_mult
+    adx_min: 25                  # ADX must be >= this (trending)
+    ema_fast: 21                  # Fast EMA for trend direction
+    ema_slow: 100                 # Slow EMA for baseline trend
+    rsi_trend_low: 45            # RSI long filter (> 40 for BUY)
+    rsi_trend_high: 55           # RSI short filter (< 60 for SELL)
+    sl_atr_mult: 5.0             # SL = ATR * sl_atr_mult
+    tp_atr_mult: 10.0             # TP = ATR * tp_atr_mult
+    trail_atr_mult: 3.0          # Trailing stop = ATR * trail_atr_mult
 
 # ── Session Windows (broker candle time) ─────────────────────────────────────
 sessions:

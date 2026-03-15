@@ -144,6 +144,15 @@ def run_backtest(
         for t in newly_closed:
             balance = max(0, balance + t.net_pnl)
             pending_pnl = 0.0
+        # ── Time stop — exit after 30 bars if trade still open ────────────────
+        TIME_STOP_BARS = 30
+        if sim.has_open_trade:
+            open_trade = sim._open_trades[0]
+            bars_open  = i - open_trade.entry_bar
+            if bars_open >= TIME_STOP_BARS:
+                for t in sim.close_all(bar, i):
+                    balance = max(0, balance + t.net_pnl)
+                logger.debug(f"Time stop hit at bar {i} — {bars_open} bars open")
 
         equity_curve.append(balance)
 
@@ -190,17 +199,30 @@ def run_backtest(
             break
 
         next_bar   = df.iloc[i + 1]
-        entry      = float(next_bar["open"])
+        entry      = float(next_bar["open"])   # actual execution price
         direction  = signal["direction"]
-        sl         = signal["sl"]
-        tp         = signal["tp"]
         atr        = signal.get("atr", 0.001)
-        session    = signal.get("session", "")
+        session      = signal.get("session", "")
 
-        sl_dist = abs(entry - sl)
-        if sl_dist > entry * 0.02:
-            i += 1
-            continue
+        # ── Recalculate SL/TP anchored to ACTUAL execution price ──────────────
+        # Preserve the ATR-based distances from the signal, but shift them
+        # to start from where we actually entered, not from the signal bar's close
+        signal_entry = signal["entry"]
+        sl_dist = abs(signal_entry - signal["sl"])   # ATR-based pip distance
+        tp_dist = abs(signal["tp"]  - signal_entry)  # ATR-based pip distance
+
+        # Enforce minimum SL of 8 pips (0.00080) on EURUSD M1
+        # M1 ATR can be 1-3 pips — too tight for spread+slippage+noise
+        MIN_SL_PIPS = 0.00080
+        sl_dist = max(sl_dist, MIN_SL_PIPS)
+        tp_dist = max(tp_dist, sl_dist * 1.8)   # maintain at least 1.8 R:R
+
+        if direction == "BUY":
+            sl = entry - sl_dist
+            tp = entry + tp_dist
+        else:  # SELL
+            sl = entry + sl_dist
+            tp = entry - tp_dist
 
         adj_risk = apply_regime_risk_scaling(
             regime if regime is not None else REGIME_MEAN_REVERT,
@@ -235,7 +257,7 @@ def run_backtest(
 
     # ── Compute metrics ───────────────────────────────────────────────────────
     profits  = [t.net_pnl for t in sim.closed_trades]
-    metrics  = compute_metrics(profits)
+    metrics = compute_metrics(profits, initial_balance=initial_balance)
     metrics  = validate_strategy(metrics)
 
     if verbose:
@@ -300,7 +322,9 @@ def _batch_hmm_predict(
         _, state_seq = hmm._model.decode(X_scaled, algorithm="viterbi")
         for i, df_ix in enumerate(feat_idx):
             if df_ix in idx_map:
-                regimes[idx_map[df_ix]] = int(state_seq[i])
+                raw_state      = int(state_seq[i])
+                canonical_state = hmm._label_map.get(raw_state, raw_state)  # ← apply label map
+                regimes[idx_map[df_ix]] = canonical_state
     except Exception:
         pass
 
