@@ -1,2 +1,0 @@
-passed,rules,total_trades,win_count,loss_count,win_rate,net_profit,gross_profit,gross_loss,avg_win,avg_loss,profit_factor,expectancy,max_drawdown,sharpe,sortino
-False,"{'min_trades': True, 'win_rate': False, 'profit_factor': False, 'max_drawdown': False}",74,20,54,0.2702702702702703,-777.6202033428907,756.664708175031,1534.2849115179217,37.83323540875155,28.41268354662818,0.49317092444481914,-10.50838112625528,0.0991268031710565,-4.312133742174611,-8.97929271417274

@@ -76,18 +76,19 @@ class StrategyRouter:
         # None regime = warm-up period → default to mean-reversion (safest)
         # HIGH_VOL (2) is intentionally absent → falls through to None → no trade
         self._routing: dict[tuple, object] = {
-            # Asian session — mean reversion only
+            # Asian session
             (SESSION_ASIAN,  REGIME_MEAN_REVERT): self._mean_rev,
             (SESSION_ASIAN,  None):               self._mean_rev,
 
-            # London — alpha strategy fires in ALL regimes
+            # London + NY — all three regimes route to alpha strategy
             (SESSION_LONDON, REGIME_TRENDING):    self._momentum,
             (SESSION_LONDON, REGIME_MEAN_REVERT): self._momentum,
+            (SESSION_LONDON, REGIME_HIGH_VOL):    self._momentum,   # ADD THIS
             (SESSION_LONDON, None):               self._momentum,
 
-            # New York — alpha strategy fires in ALL regimes
             (SESSION_NY,     REGIME_TRENDING):    self._momentum,
             (SESSION_NY,     REGIME_MEAN_REVERT): self._momentum,
+            (SESSION_NY,     REGIME_HIGH_VOL):    self._momentum,   # ADD THIS
             (SESSION_NY,     None):               self._momentum,
         }
 
@@ -159,11 +160,6 @@ class StrategyRouter:
             logger.debug(f"No active session at {candle_time} — no trade.")
             return None
 
-        # ── Regime gate: never trade in high-volatility regime ─────────────────
-        if regime == REGIME_HIGH_VOL:
-            logger.debug(f"High-vol regime — no trade (session={session}).")
-            return None
-
         # ── Look up routing table ──────────────────────────────────────────────
         strategy = self._routing.get((session, regime))
 
@@ -173,16 +169,7 @@ class StrategyRouter:
             )
             return None
 
-        # ── Alpha Signal Filtering (via SignalCombiner) ────────────────────────
-        combined_scores = self._combiner.combine(df, regime=regime)
-
-        # If combiner has no directional view, skip this bar
-        if combined_scores.get("direction") is None:
-            logger.debug(
-                f"Combiner score={combined_scores['combined']:.3f} — "
-                f"below threshold, no trade."
-            )
-            return None
+        # SignalCombiner removed — alpha strategy self-filters via thresholds
         
 
         # ── Generate signal ────────────────────────────────────────────────────

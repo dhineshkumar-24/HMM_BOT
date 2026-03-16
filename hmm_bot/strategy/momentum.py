@@ -124,11 +124,11 @@ class MomentumStrategy(StrategyBase):
             # Reduce threshold — need stronger signal
             mode = "high_vol_mr"
 
-            if alpha_mr > 3.5 and alpha_mom > -2.0:
+            if alpha_mr > 2.0 and alpha_mom > -3.0:
                 direction = "BUY"
                 signal_strength = min(alpha_mr, 5.0)
 
-            elif alpha_mr < -3.5 and alpha_mom < 2.0:
+            elif alpha_mr < -2.0 and alpha_mom < 3.0:
                 direction = "SELL"
                 signal_strength = min(abs(alpha_mr), 5.0)
 
