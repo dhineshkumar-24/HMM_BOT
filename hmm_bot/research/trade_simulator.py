@@ -201,31 +201,50 @@ class TradeSimulator:
 
             # ── Step 1 & 2: Check SL / TP against this bar using CURRENT SL
             # (BEFORE trail update — trail is applied at end of bar)
-            if low <= trade.sl and high >= trade.tp:
-                if abs(trade.entry_price - trade.sl) < abs(trade.entry_price - trade.tp):
-                    exit_price = trade.sl
-                    exit_reason = "SL"
-                else:
-                    exit_price = trade.tp
-                    exit_reason = "TP"
-                closed = True
-            elif low <= trade.sl:
-                exit_price = trade.sl
-                exit_reason = "SL"
-                closed = True
-            elif high >= trade.tp:
-                exit_price = trade.tp
-                exit_reason = "TP"
-                closed = True
-            else:   # SELL
-                if high >= trade.sl:
+            if trade.direction == "BUY":
+                # BUY: SL is below entry, TP is above entry
+                sl_hit = (low  <= trade.sl)
+                tp_hit = (high >= trade.tp)
+
+                if sl_hit and tp_hit:
+                    # Both triggered intrabar — use whichever is closer to entry
+                    if abs(trade.entry_price - trade.sl) < abs(trade.entry_price - trade.tp):
+                        exit_price  = trade.sl
+                        exit_reason = "SL"
+                    else:
+                        exit_price  = trade.tp
+                        exit_reason = "TP"
+                    closed = True
+                elif sl_hit:
                     exit_price  = trade.sl
                     exit_reason = "SL"
-                    closed = True
-                elif low <= trade.tp:
+                    closed      = True
+                elif tp_hit:
                     exit_price  = trade.tp
                     exit_reason = "TP"
+                    closed      = True
+
+            else:  # SELL
+                # SELL: SL is above entry, TP is below entry
+                sl_hit = (high >= trade.sl)
+                tp_hit = (low  <= trade.tp)
+
+                if sl_hit and tp_hit:
+                    if abs(trade.entry_price - trade.sl) < abs(trade.entry_price - trade.tp):
+                        exit_price  = trade.sl
+                        exit_reason = "SL"
+                    else:
+                        exit_price  = trade.tp
+                        exit_reason = "TP"
                     closed = True
+                elif sl_hit:
+                    exit_price  = trade.sl
+                    exit_reason = "SL"
+                    closed      = True
+                elif tp_hit:
+                    exit_price  = trade.tp
+                    exit_reason = "TP"
+                    closed      = True
 
             if closed:
                 self._close_trade(trade, exit_price, exit_reason, bar_idx)

@@ -39,7 +39,7 @@ class MomentumStrategy(StrategyBase):
         self.config = config
         alpha_cfg   = config.get("strategy", {}).get("alpha", {})
 
-        self.alpha_threshold_pct = alpha_cfg.get("threshold_percentile", 80)
+        self.alpha_threshold_pct = alpha_cfg.get("threshold_percentile", 75)
         self.tp_vol_mult         = alpha_cfg.get("tp_vol_mult", 2.0)
         self.sl_vol_mult         = alpha_cfg.get("sl_vol_mult", 1.0)
         self.target_risk         = config.get("trading", {}).get("risk_per_trade", 0.01)
@@ -47,7 +47,7 @@ class MomentumStrategy(StrategyBase):
 
         # Rolling alpha history for percentile threshold
         self._alpha_history: list[float] = []
-        self._history_window = 200
+        self._history_window = 100
 
         logger.info(
             f"AlphaStrategy ready | "
@@ -80,40 +80,75 @@ class MomentumStrategy(StrategyBase):
 
         prev = df.iloc[-2]   # last closed bar
 
-        # ── Extract alpha values ───────────────────────────────────────────────
-        combined = prev.get("combined_alpha", float("nan"))
-        vol10    = prev.get("vol10",          float("nan"))
-        z_mr     = prev.get("z_mr",           float("nan"))
-        z_mom    = prev.get("z_mom",          float("nan"))
-        z_vol    = prev.get("z_vol",          float("nan"))
+        
 
-        if any(np.isnan(v) for v in [combined, vol10, z_mr, z_mom, z_vol]):
+        # ── Extract alpha values ───────────────────────────────────────────────
+        combined  = prev.get("combined_alpha", float("nan"))
+        vol10     = prev.get("vol10",          float("nan"))
+        alpha_mr  = prev.get("alpha_mr",  float("nan"))
+        alpha_mom = prev.get("alpha_mom", float("nan"))
+        alpha_vol = prev.get("alpha_vol", float("nan"))
+
+        if any(np.isnan(v) for v in [combined, vol10, alpha_mr, alpha_mom, alpha_vol]):
             return None
 
         if vol10 <= 0:
             return None
 
         # ── Dynamic threshold via rolling percentile ───────────────────────────
-        self._alpha_history.append(abs(combined))
-        if len(self._alpha_history) > self._history_window:
-            self._alpha_history.pop(0)
+        # self._alpha_history.append(abs(combined))
+        # if len(self._alpha_history) > self._history_window:
+        #     self._alpha_history.pop(0)
 
-        if len(self._alpha_history) < 50:
-            return None   # need history to calibrate threshold
+        # if len(self._alpha_history) < 50:
+        #     return None   # need history to calibrate threshold
 
-        threshold = float(np.percentile(
-            self._alpha_history, self.alpha_threshold_pct
-        ))
+        # threshold = float(np.percentile(
+        #     self._alpha_history, self.alpha_threshold_pct
+        # ))
 
+        # abs_alpha = abs(combined)
+        # if abs_alpha <= threshold:
+        #     logger.debug(
+        #         f"Alpha {abs_alpha:.3f} <= threshold {threshold:.3f} — skip"
+        #     )
+        #     return None
+        FIXED_THRESHOLD = 1.8
         abs_alpha = abs(combined)
-        if abs_alpha <= threshold:
-            logger.debug(
-                f"Alpha {abs_alpha:.3f} <= threshold {threshold:.3f} — skip"
-            )
+
+        if abs_alpha <= FIXED_THRESHOLD:
             return None
+
+        threshold = FIXED_THRESHOLD
 
         # ── Direction ─────────────────────────────────────────────────────────
         direction = "BUY" if combined > 0 else "SELL"
+
+        # ── Conflict filter between mean reversion and momentum ───────────────
+        # Replace z_mr/z_mom references with alpha_mr/alpha_mom:
+        # Block when momentum strongly opposes mean reversion
+        # If a_mr says BUY but a_mom > +5 (strong 60-min uptrend already running),
+        # price has already moved — mean reversion bounce is unlikely to reach TP
+        # Replace this:
+        MOM_BLOCK_THRESHOLD = 5.0
+        if direction == "BUY" and alpha_mom > MOM_BLOCK_THRESHOLD:
+            return None
+        if direction == "SELL" and alpha_mom < -MOM_BLOCK_THRESHOLD:
+            return None
+
+        # With this — ONLY trade when signals agree in direction:
+        # BUY needs: a_mr > 0 (price fell = expect bounce)
+        #            a_mom >= -3 (not in strong downtrend that would continue down)
+        # SELL needs: a_mr < 0 (price rose = expect fade)
+        #             a_mom <= +3 (not in strong uptrend that would continue up)
+
+        if direction == "BUY" and alpha_mom > 3.0:
+            logger.debug(f"BUY blocked — strong uptrend a_mom={alpha_mom:.2f} will continue, not reverse")
+            return None
+
+        if direction == "SELL" and alpha_mom < -3.0:
+            logger.debug(f"SELL blocked — strong downtrend a_mom={alpha_mom:.2f} will continue, not reverse")
+            return None
 
         # ── Volatility-based SL/TP ────────────────────────────────────────────
         entry     = float(df.iloc[-1]["close"])
@@ -128,7 +163,7 @@ class MomentumStrategy(StrategyBase):
             return None
 
         sl_dist = max(vol_price * self.sl_vol_mult, 0.00080)   # min 8 pips
-        tp_dist = max(vol_price * self.tp_vol_mult, sl_dist * 1.5)
+        tp_dist = max(vol_price * self.tp_vol_mult, sl_dist * 1.8)
 
         if direction == "BUY":
             sl = entry - sl_dist
@@ -138,8 +173,8 @@ class MomentumStrategy(StrategyBase):
             tp = entry - tp_dist
 
         reason = (
-            f"combined={combined:+.3f} > thr={threshold:.3f} | "
-            f"z_mr={z_mr:+.2f} z_mom={z_mom:+.2f} z_vol={z_vol:+.2f} | "
+            f"combined={combined:+.3f} > thr={FIXED_THRESHOLD:.3f} | "
+            f"a_mr={alpha_mr:+.2f} a_mom={alpha_mom:+.2f} a_vol={alpha_vol:+.2f} | "
             f"vol10={vol10:.6f} | session={session}"
         )
 

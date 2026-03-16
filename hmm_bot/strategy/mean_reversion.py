@@ -77,7 +77,8 @@ class MeanReversionStrategy(StrategyBase):
         self.ema_flat_thr = mr["ema_slope_flat"]      # |slope| threshold
         self.adx_max      = mr["adx_max"]             # ADX must be below this
         self.sl_mult      = mr["sl_atr_mult"]         # SL = ATR * this
-        self.trail_mult   = mr["trail_atr_mult"]      # trailing = ATR * this
+        self.trail_mult   = mr["trail_atr_mult"]
+        self.min_rr       = mr.get("min_rr", 1.3)      # trailing = ATR * this
 
         logger.info(
             f"MeanReversionStrategy ready | "
@@ -195,14 +196,31 @@ class MeanReversionStrategy(StrategyBase):
 
         if direction == "BUY":
             sl = entry - sl_dist
-            tp = float(vwap)          # TP = rolling mean (VWAP)
-            if tp <= entry:           # Safety: ensure TP is above entry for BUY
+            tp = entry + (vwap - entry) * 0.8
+
+            if tp <= entry:
                 return None
+
+            reward = tp - entry
+            risk   = entry - sl
+
         else:
             sl = entry + sl_dist
-            tp = float(vwap)          # TP = rolling mean (VWAP)
-            if tp >= entry:           # Safety: ensure TP is below entry for SELL
+            tp = entry - (entry - vwap) * 0.8
+
+            if tp >= entry:
                 return None
+
+            reward = entry - tp
+            risk   = sl - entry
+
+
+        # Enforce minimum risk/reward
+        rr = reward / risk if risk > 0 else 0
+
+        if rr < self.min_rr:
+            logger.debug(f"MR filter: RR {rr:.2f} < {self.min_rr} → skip")
+            return None
 
         signal = {
             "direction": direction,

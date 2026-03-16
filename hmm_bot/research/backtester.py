@@ -30,6 +30,9 @@ from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Ensure hmm_bot/ is on the path when run from research/
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -171,12 +174,21 @@ def run_backtest(
             i += 1
             continue
 
-        # ── HMM confidence gate ───────────────────────────────────────────────
-        if hmm is not None and hmm.is_trained and regime is not None:
-            conf = _regime_confidence(hmm, df, i)
-            if not hmm.should_trade(regime, conf):
-                i += 1
-                continue
+        # # ── HMM confidence gate (only for MeanReversionStrategy, not AlphaStrategy)
+        # use_hmm_gate = True
+        # if use_router:
+        #     # Check which strategy would be selected — skip gate for alpha strategy
+        #     session_now = detect_session(config, candle_time)
+        #     from strategy.momentum import MomentumStrategy as AlphaStrat
+        #     candidate = strategy._routing.get((session_now, regime))
+        #     if isinstance(candidate, AlphaStrat):
+        #         use_hmm_gate = False  # alpha filters itself via combined_alpha threshold
+
+        # if use_hmm_gate and hmm is not None and hmm.is_trained and regime is not None:
+        #     conf = _regime_confidence(hmm, df, i)
+        #     if not hmm.should_trade(regime, conf):
+        #         i += 1
+        #         continue
 
         # ── Generate signal ───────────────────────────────────────────────────
         window = df.iloc[: i + 1]
@@ -213,9 +225,9 @@ def run_backtest(
 
         # Enforce minimum SL of 8 pips (0.00080) on EURUSD M1
         # M1 ATR can be 1-3 pips — too tight for spread+slippage+noise
-        MIN_SL_PIPS = 0.00080
+        MIN_SL_PIPS = 0.00050
         sl_dist = max(sl_dist, MIN_SL_PIPS)
-        tp_dist = max(tp_dist, sl_dist * 1.8)   # maintain at least 1.8 R:R
+        tp_dist = max(tp_dist, sl_dist * 2.0)   # maintain at least 1.8 R:R
 
         if direction == "BUY":
             sl = entry - sl_dist

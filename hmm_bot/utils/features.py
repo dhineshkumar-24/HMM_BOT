@@ -243,21 +243,12 @@ def build_alpha_features(df: pd.DataFrame) -> pd.DataFrame:
     # vol10 > vol50 means volatility expanding = directional move
     alpha_vol = vol_regime - 1.0
 
-    # ── Z-score normalization (rolling 100-bar window) ────────────────────────
-    def rolling_zscore(s: pd.Series, window: int = 100) -> pd.Series:
-        m  = s.rolling(window).mean()
-        sd = s.rolling(window).std().replace(0, np.nan)
-        return (s - m) / sd
+    # ── Combined alpha — raw values, no z-score normalization ─────────────────
+    # Raw alpha units: alpha_mr ≈ ±1 to ±5, alpha_mom ≈ ±0.5 to ±3
+    # Z-score normalization was destroying signal in calm markets
+    mom_agree = np.sign(alpha_mr) * np.sign(alpha_mom)  # +1 if agree, -1 if conflict
+    combined   = alpha_mr * (1.0 + 0.20 * mom_agree.clip(-1, 1))
 
-    z_mr  = rolling_zscore(alpha_mr)
-    z_mom = rolling_zscore(alpha_mom)
-    z_vol = rolling_zscore(alpha_vol)
-
-    # ── Combined alpha — mean reversion weighted highest for M1 ───────────────
-    # Mean reversion (0.55): dominant M1 EURUSD regime
-    # Momentum (0.25):       1-hour trend as directional confirmation only
-    # Vol expansion (0.20):  breakout confirmation
-    combined = (0.55 * z_mr) + (0.25 * z_mom) + (0.20 * z_vol)
 
     result = pd.DataFrame({
         "r5":             r5,
@@ -269,9 +260,6 @@ def build_alpha_features(df: pd.DataFrame) -> pd.DataFrame:
         "alpha_mr":       alpha_mr,
         "alpha_mom":      alpha_mom,
         "alpha_vol":      alpha_vol,
-        "z_mr":           z_mr,
-        "z_mom":          z_mom,
-        "z_vol":          z_vol,
         "combined_alpha": combined,
     }, index=df.index)
 

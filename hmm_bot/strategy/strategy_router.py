@@ -76,25 +76,24 @@ class StrategyRouter:
         # None regime = warm-up period → default to mean-reversion (safest)
         # HIGH_VOL (2) is intentionally absent → falls through to None → no trade
         self._routing: dict[tuple, object] = {
-        # Asian + mean-revert → mean reversion strategy
-        (SESSION_ASIAN,  REGIME_MEAN_REVERT): self._mean_rev,
-        (SESSION_ASIAN,  None):               self._mean_rev,
+            # Asian session — mean reversion only
+            (SESSION_ASIAN,  REGIME_MEAN_REVERT): self._mean_rev,
+            (SESSION_ASIAN,  None):               self._mean_rev,
 
-        # London/NY + trending → alpha strategy
-        (SESSION_LONDON, REGIME_TRENDING):    self._momentum,
-        (SESSION_NY,     REGIME_TRENDING):    self._momentum,
+            # London — alpha strategy fires in ALL regimes
+            (SESSION_LONDON, REGIME_TRENDING):    self._momentum,
+            (SESSION_LONDON, REGIME_MEAN_REVERT): self._momentum,
+            (SESSION_LONDON, None):               self._momentum,
 
-        # NEW: also trade mean-revert regime with alpha in London/NY
-        # Alpha mean-reversion signal works in all volatility environments
-        (SESSION_LONDON, REGIME_MEAN_REVERT): self._momentum,
-        (SESSION_NY,     REGIME_MEAN_REVERT): self._momentum,
+            # New York — alpha strategy fires in ALL regimes
+            (SESSION_NY,     REGIME_TRENDING):    self._momentum,
+            (SESSION_NY,     REGIME_MEAN_REVERT): self._momentum,
+            (SESSION_NY,     None):               self._momentum,
         }
 
         logger.info(
             "StrategyRouter ready | "
-            "ASIAN+MeanRevert→MeanRev | "
-            "LONDON+Trending→Momentum | "
-            "NY+Trending→Momentum"
+            "ASIAN→MeanRev | LONDON+NY (all regimes)→AlphaStrategy"
         )
 
     # ── Public API ─────────────────────────────────────────────────────────────

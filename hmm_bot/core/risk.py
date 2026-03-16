@@ -14,54 +14,55 @@ def calculate_position_size(
     symbol: str = "EURUSD",
 ) -> float:
     """
-    Compute lot size so that a stop-loss hit loses exactly `risk_pct` of balance.
-
-    Args:
-        balance:     Account balance in account currency.
-        risk_pct:    Fraction of balance to risk (e.g. 0.01 = 1%).
-        sl_distance: Price distance to stop-loss (e.g. 0.0020 for 20 pips on EURUSD).
-        symbol:      Instrument ticker (used to fetch contract specs from MT5).
-
-    Returns:
-        Normalised lot size clamped to broker min/max/step.
+    Compute lot size so SL hit = exactly risk_pct of balance.
+    Works in backtest (no MT5) and live (with MT5).
     """
-    # ── Minimum SL distance guard ─────────────────────────────────────────────
-    # Never allow SL closer than 5 pips (0.00050) on EURUSD
-    # Prevents tiny SL distances producing insane lot sizes
-    MIN_SL_DISTANCE = 0.00050
+    MIN_SL_DISTANCE = 0.00050   # 5 pip floor
+    MAX_LOTS        = 2.00      # hard cap
+    MIN_LOTS        = 0.01
+
     if sl_distance < MIN_SL_DISTANCE:
         sl_distance = MIN_SL_DISTANCE
-
     if sl_distance <= 0:
-        return 0.01
+        return MIN_LOTS
 
-    symbol_info = mt5.symbol_info(symbol)
-    if not symbol_info:
-        return 0.01
+    risk_amount = balance * risk_pct  # e.g. $100 at 1%
 
-    contract_size = symbol_info.trade_contract_size  # Usually 100,000 for FX
-    risk_amount   = balance * risk_pct
+    # ── Try MT5 first (live trading) ─────────────────────────────────────────
+    try:
+        import MetaTrader5 as mt5
+        symbol_info = mt5.symbol_info(symbol)
+        if symbol_info:
+            contract_size = symbol_info.trade_contract_size
+            loss_per_lot  = sl_distance * contract_size
+            if loss_per_lot > 0:
+                lot_size = risk_amount / loss_per_lot
+                step     = symbol_info.volume_step
+                lot_size = round(lot_size / step) * step
+                lot_size = max(lot_size, symbol_info.volume_min)
+                lot_size = min(lot_size, symbol_info.volume_max)
+                lot_size = min(lot_size, MAX_LOTS)
+                return lot_size
+    except Exception:
+        pass
 
-    # Loss per 1.0 lot for given SL distance = distance × contract_size
-    loss_per_lot = sl_distance * contract_size
-    if loss_per_lot == 0:
-        return 0.01
+    # ── Fallback for backtest (no MT5 connection) ─────────────────────────────
+    # EURUSD standard: contract = 100,000 units
+    # loss_per_lot = sl_distance * 100,000
+    # e.g. 5 pip SL = 0.0005 * 100000 = $50 per lot
+    CONTRACT_SIZE = 100_000.0
+    loss_per_lot  = sl_distance * CONTRACT_SIZE
+
+    if loss_per_lot <= 0:
+        return MIN_LOTS
 
     lot_size = risk_amount / loss_per_lot
 
-    # Normalise to broker step
-    step     = symbol_info.volume_step
-    lot_size = round(lot_size / step) * step
-
-    # Clamp to min/max
-    lot_size = max(lot_size, symbol_info.volume_min)
-    lot_size = min(lot_size, symbol_info.volume_max)
-    
-    # ── Hard cap: never more than 0.5 lots per trade on small accounts ────────
-    MAX_LOTS = 0.50
+    # Round to 0.01 step
+    lot_size = round(lot_size / 0.01) * 0.01
+    lot_size = max(lot_size, MIN_LOTS)
     lot_size = min(lot_size, MAX_LOTS)
-    # ─────────────────────────────────────────────────────────────────────────
-    
+
     return lot_size
 
 
