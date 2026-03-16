@@ -207,59 +207,63 @@ def get_feature_names() -> list[str]:
 
 def build_alpha_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Statistical alpha features tuned for M1 EURUSD mean-reverting regime.
-
-    Key insight: On M1, 20-bar momentum picks up EXHAUSTED moves.
-    Use r60 (1-hour) for momentum — genuine directional flow.
-    Weight mean reversion highest — dominant M1 effect.
+    Regime-adaptive alpha features.
+    Mean reversion alpha:  fade short-term overextension vs VWAP
+    Momentum alpha:        ride directional 1-hour order flow
+    Vol regime:            classify current volatility environment
     """
     close   = df["close"]
+    high    = df["high"]
+    low     = df["low"]
     log_ret = np.log(close / close.shift(1))
 
-    # ── Returns ───────────────────────────────────────────────────────────────
-    r5  = close.pct_change(5)    # 5-min pullback detector
-    r60 = close.pct_change(60)   # 1-hour trend (was r20 — too short)
-
-    # ── Volatility horizons ───────────────────────────────────────────────────
+    # ── Vol horizons ──────────────────────────────────────────────────────────
     vol10 = log_ret.rolling(10).std()
     vol50 = log_ret.rolling(50).std()
 
-    # ── Structural features ───────────────────────────────────────────────────
-    trend_strength = log_ret.rolling(20).corr(log_ret.shift(1))
-    vol_regime     = vol10 / vol50.replace(0, np.nan)
+    # ── MEAN REVERSION ALPHA ──────────────────────────────────────────────────
+    # VWAP-based Z-score: price vs its 20-bar mean, scaled by recent vol
+    # Positive = price ABOVE mean = overextended UP = SELL candidate
+    # Negative = price BELOW mean = overextended DOWN = BUY candidate
+    roll_mean = close.rolling(20).mean()
+    roll_std  = close.rolling(20).std().replace(0, np.nan)
+    z_vwap    = (close - roll_mean) / roll_std          # standard z-score
+    alpha_mr  = -z_vwap                                 # invert: positive = BUY
+    # Scale: alpha_mr > 1.5 means price is 1.5 sigma below mean = strong BUY setup
 
-    # ── Three alpha signals ───────────────────────────────────────────────────
-    # Alpha 1: SHORT-TERM MEAN REVERSION (dominant M1 effect)
-    # Fades overextended 5-bar moves back to mean
-    # Positive alpha_mr = price pulled back = expect bounce
-    alpha_mr  = -(r5 / vol10.replace(0, np.nan))
-
-    # Alpha 2: MEDIUM-TERM MOMENTUM (1-hour directional flow)
-    # r60 captures genuine order flow, not noise
-    # Positive alpha_mom = 1-hour uptrend = buy with trend
+    # ── MOMENTUM ALPHA ────────────────────────────────────────────────────────
+    # Time-series momentum: cumulative 60-bar sign
+    # Use sign of returns summed — avoids magnitude domination
+    r5  = close.pct_change(5)
+    r20 = close.pct_change(20)
+    r60 = close.pct_change(60)
+    # Normalize by volatility so it's comparable across calm and volatile periods
     alpha_mom = r60 / vol50.replace(0, np.nan)
+    # Clip to ±5 to prevent extreme momentum values from dominating
+    alpha_mom = alpha_mom.clip(-5, 5)
 
-    # Alpha 3: VOLATILITY EXPANSION (breakout / clustering)
-    # vol10 > vol50 means volatility expanding = directional move
-    alpha_vol = vol_regime - 1.0
+    # ── VOL REGIME ────────────────────────────────────────────────────────────
+    vol_regime = (vol10 / vol50.replace(0, np.nan)) - 1.0  # >0 = expanding vol
 
-    # ── Combined alpha — raw values, no z-score normalization ─────────────────
-    # Raw alpha units: alpha_mr ≈ ±1 to ±5, alpha_mom ≈ ±0.5 to ±3
-    # Z-score normalization was destroying signal in calm markets
-    mom_agree = np.sign(alpha_mr) * np.sign(alpha_mom)  # +1 if agree, -1 if conflict
-    combined   = alpha_mr * (1.0 + 0.20 * mom_agree.clip(-1, 1))
+    # ── TREND STRENGTH ────────────────────────────────────────────────────────
+    # Rolling autocorrelation: positive = trending, negative = mean-reverting
+    trend_strength = log_ret.rolling(20).corr(log_ret.shift(1))
 
+    # ── COMBINED — not used directly, regime routing selects which alpha ──────
+    # This is a fallback composite only used if regime is unknown
+    combined = alpha_mr  # default to mean reversion
 
     result = pd.DataFrame({
         "r5":             r5,
+        "r20":            r20,
         "r60":            r60,
         "vol10":          vol10,
         "vol50":          vol50,
+        "z_vwap":         z_vwap,
         "trend_strength": trend_strength,
         "vol_regime":     vol_regime,
         "alpha_mr":       alpha_mr,
         "alpha_mom":      alpha_mom,
-        "alpha_vol":      alpha_vol,
         "combined_alpha": combined,
     }, index=df.index)
 

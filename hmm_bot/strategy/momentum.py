@@ -1,16 +1,9 @@
 """
-strategy/momentum.py — Statistical Alpha Strategy.
+strategy/momentum.py — Regime-Adaptive Alpha Strategy.
 
-Replaces EMA/RSI/ADX indicator logic with three pure statistical alpha signals:
-
-    Alpha 1 (Mean Reversion):  alpha_mr  = -r5 / vol10
-    Alpha 2 (Momentum):        alpha_mom =  r20 / vol50
-    Alpha 3 (Vol Expansion):   alpha_vol =  (vol10/vol50) - 1
-
-    Combined: 0.35*z_mr + 0.40*z_mom + 0.25*z_vol
-
-Entry: |combined_alpha| > 80th percentile rolling threshold
-Exit:  TP = 2*vol10*price,  SL = 1*vol10*price,  Time stop = 30 bars
+MEAN_REVERT regime  → fade short-term overextension (z_vwap signal)
+TRENDING regime     → ride 1-hour momentum on pullbacks (alpha_mom signal)
+HIGH_VOL regime     → reduce size, still trade with mean reversion only
 """
 
 from __future__ import annotations
@@ -22,48 +15,39 @@ from typing import Optional
 from strategy.strategy_base import StrategyBase
 from utils.features         import build_alpha_features
 from utils.logger           import setup_logger
+from core.hmm_model         import (
+    REGIME_MEAN_REVERT,
+    REGIME_TRENDING,
+    REGIME_HIGH_VOL,
+)
 
 logger = setup_logger("AlphaStrategy")
 
-# Sessions this strategy is active in
 ACTIVE_SESSIONS = ("london", "newyork", "asian")
 
 
 class MomentumStrategy(StrategyBase):
-    """
-    Statistical alpha strategy. Class name kept as MomentumStrategy
-    so zero changes needed in strategy_router.py.
-    """
+    """Regime-adaptive strategy."""
 
     def __init__(self, config: dict):
-        self.config = config
-        alpha_cfg   = config.get("strategy", {}).get("alpha", {})
+        self.config  = config
+        alpha_cfg    = config.get("strategy", {}).get("alpha", {})
 
-        self.alpha_threshold_pct = alpha_cfg.get("threshold_percentile", 75)
-        self.tp_vol_mult         = alpha_cfg.get("tp_vol_mult", 2.0)
-        self.sl_vol_mult         = alpha_cfg.get("sl_vol_mult", 1.0)
-        self.target_risk         = config.get("trading", {}).get("risk_per_trade", 0.01)
-        self.min_edge_over_cost  = alpha_cfg.get("min_edge_pips", 0.00015)  # 1.5 pips
-
-        # Rolling alpha history for percentile threshold
-        self._alpha_history: list[float] = []
-        self._history_window = 100
+        self.tp_vol_mult        = alpha_cfg.get("tp_vol_mult", 6.0)
+        self.sl_vol_mult        = alpha_cfg.get("sl_vol_mult", 4.0)
+        self.min_edge_over_cost = alpha_cfg.get("min_edge_pips", 0.00010)
 
         logger.info(
             f"AlphaStrategy ready | "
-            f"Threshold: {self.alpha_threshold_pct}th percentile | "
+            f"Threshold: 70th percentile | "
             f"TP={self.tp_vol_mult}x vol | SL={self.sl_vol_mult}x vol"
         )
 
     def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Compute statistical alpha features and merge into df."""
         df   = df.copy()
         feats = build_alpha_features(df)
-
-        # Merge alpha columns into main df
         for col in feats.columns:
             df[col] = feats[col]
-
         return df
 
     def generate_signal(
@@ -72,98 +56,102 @@ class MomentumStrategy(StrategyBase):
         regime:  Optional[int] = None,
         session: Optional[str] = None,
     ) -> Optional[dict]:
-        """
-        Generate a trade signal based on combined statistical alpha.
-        """
+
         if len(df) < 120:
             return None
 
-        prev = df.iloc[-2]   # last closed bar
+        prev = df.iloc[-2]
 
-        
-
-        # ── Extract alpha values ───────────────────────────────────────────────
-        combined  = prev.get("combined_alpha", float("nan"))
-        vol10     = prev.get("vol10",          float("nan"))
         alpha_mr  = prev.get("alpha_mr",  float("nan"))
         alpha_mom = prev.get("alpha_mom", float("nan"))
-        alpha_vol = prev.get("alpha_vol", float("nan"))
+        vol10     = prev.get("vol10",     float("nan"))
+        z_vwap    = prev.get("z_vwap",    float("nan"))
+        vol_regime = prev.get("vol_regime", float("nan"))
 
-        if any(np.isnan(v) for v in [combined, vol10, alpha_mr, alpha_mom, alpha_vol]):
+        if any(np.isnan(v) for v in [alpha_mr, alpha_mom, vol10, z_vwap]):
             return None
 
         if vol10 <= 0:
             return None
 
-        # ── Dynamic threshold via rolling percentile ───────────────────────────
-        # self._alpha_history.append(abs(combined))
-        # if len(self._alpha_history) > self._history_window:
-        #     self._alpha_history.pop(0)
+        entry = float(df.iloc[-1]["close"])
+        price = float(prev["close"])
+        vol_price = vol10 * price
 
-        # if len(self._alpha_history) < 50:
-        #     return None   # need history to calibrate threshold
-
-        # threshold = float(np.percentile(
-        #     self._alpha_history, self.alpha_threshold_pct
-        # ))
-
-        # abs_alpha = abs(combined)
-        # if abs_alpha <= threshold:
-        #     logger.debug(
-        #         f"Alpha {abs_alpha:.3f} <= threshold {threshold:.3f} — skip"
-        #     )
-        #     return None
-        FIXED_THRESHOLD = 1.8
-        abs_alpha = abs(combined)
-
-        if abs_alpha <= FIXED_THRESHOLD:
-            return None
-
-        threshold = FIXED_THRESHOLD
-
-        # ── Direction ─────────────────────────────────────────────────────────
-        direction = "BUY" if combined > 0 else "SELL"
-
-        # ── Conflict filter between mean reversion and momentum ───────────────
-        # Replace z_mr/z_mom references with alpha_mr/alpha_mom:
-        # Block when momentum strongly opposes mean reversion
-        # If a_mr says BUY but a_mom > +5 (strong 60-min uptrend already running),
-        # price has already moved — mean reversion bounce is unlikely to reach TP
-        # Replace this:
-        MOM_BLOCK_THRESHOLD = 5.0
-        if direction == "BUY" and alpha_mom > MOM_BLOCK_THRESHOLD:
-            return None
-        if direction == "SELL" and alpha_mom < -MOM_BLOCK_THRESHOLD:
-            return None
-
-        # With this — ONLY trade when signals agree in direction:
-        # BUY needs: a_mr > 0 (price fell = expect bounce)
-        #            a_mom >= -3 (not in strong downtrend that would continue down)
-        # SELL needs: a_mr < 0 (price rose = expect fade)
-        #             a_mom <= +3 (not in strong uptrend that would continue up)
-
-        if direction == "BUY" and alpha_mom > 3.0:
-            logger.debug(f"BUY blocked — strong uptrend a_mom={alpha_mom:.2f} will continue, not reverse")
-            return None
-
-        if direction == "SELL" and alpha_mom < -3.0:
-            logger.debug(f"SELL blocked — strong downtrend a_mom={alpha_mom:.2f} will continue, not reverse")
-            return None
-
-        # ── Volatility-based SL/TP ────────────────────────────────────────────
-        entry     = float(df.iloc[-1]["close"])
-        price     = float(prev["close"])
-
-        # Convert realized vol (in log-return units) to price units
-        vol_price = vol10 * price   # approximate $ move for 1-sigma
-
-        # Enforce minimum move must exceed transaction costs
         if vol_price < self.min_edge_over_cost:
-            logger.debug(f"Vol {vol_price:.5f} < min edge — skip")
             return None
 
-        sl_dist = max(vol_price * self.sl_vol_mult, 0.00080)   # min 8 pips
-        tp_dist = max(vol_price * self.tp_vol_mult, sl_dist * 1.8)
+        # ── REGIME-ADAPTIVE SIGNAL SELECTION ─────────────────────────────────
+        direction = None
+        signal_strength = 0.0
+        mode = "mean_rev"
+
+        if regime == REGIME_TRENDING:
+            # In trending regime: momentum-on-pullback
+            # Only enter when a_mom confirms direction AND
+            # short-term alpha_mr shows a pullback opportunity
+            mode = "momentum_pullback"
+
+            if alpha_mom > 1.5 and alpha_mr > 1.0:
+                # 60-min uptrend, 5-min pullback → BUY the dip
+                direction = "BUY"
+                signal_strength = min(alpha_mr, 5.0)
+
+            elif alpha_mom < -1.5 and alpha_mr < -1.0:
+                # 60-min downtrend, 5-min bounce → SELL the rally
+                direction = "SELL"
+                signal_strength = min(abs(alpha_mr), 5.0)
+
+        elif regime == REGIME_MEAN_REVERT or regime is None:
+            # In mean-reverting regime: fade Z-score extremes
+            # Only when 60-min momentum is NOT strongly opposing
+            mode = "mean_rev"
+
+            if alpha_mr > 2.0 and alpha_mom > -3.0:
+                # Price extended DOWN (z_vwap < -2), not in downtrend → BUY
+                direction = "BUY"
+                signal_strength = min(alpha_mr, 5.0)
+
+            elif alpha_mr < -2.0 and alpha_mom < 3.0:
+                # Price extended UP (z_vwap > +2), not in uptrend → SELL
+                direction = "SELL"
+                signal_strength = min(abs(alpha_mr), 5.0)
+
+        elif regime == REGIME_HIGH_VOL:
+            # High vol: only take very high conviction mean reversion
+            # Reduce threshold — need stronger signal
+            mode = "high_vol_mr"
+
+            if alpha_mr > 3.5 and alpha_mom > -2.0:
+                direction = "BUY"
+                signal_strength = min(alpha_mr, 5.0)
+
+            elif alpha_mr < -3.5 and alpha_mom < 2.0:
+                direction = "SELL"
+                signal_strength = min(abs(alpha_mr), 5.0)
+
+        if direction is None:
+            return None
+
+        # ── SL / TP — regime-scaled ───────────────────────────────────────────
+        # In trending regime use wider SL (trend can retest)
+        # In mean-revert use tighter SL (fast reversion or invalidated)
+        if regime == REGIME_TRENDING:
+            sl_mult = max(self.sl_vol_mult * 1.2, 4.5)
+            tp_mult = max(self.tp_vol_mult * 1.5, 8.0)  # trend trades go further
+        elif regime == REGIME_HIGH_VOL:
+            sl_mult = max(self.sl_vol_mult * 1.5, 5.0)  # wider SL for high vol
+            tp_mult = self.tp_vol_mult
+        else:
+            sl_mult = self.sl_vol_mult
+            tp_mult = self.tp_vol_mult
+
+        sl_dist = max(vol_price * sl_mult, 0.00080)
+        tp_dist = max(vol_price * tp_mult, sl_dist * 1.8)
+
+        # Scale TP by signal strength: stronger signal = allow larger target
+        tp_dist = tp_dist * (1.0 + 0.10 * (signal_strength - 2.0))
+        tp_dist = max(tp_dist, sl_dist * 1.8)
 
         if direction == "BUY":
             sl = entry - sl_dist
@@ -173,8 +161,9 @@ class MomentumStrategy(StrategyBase):
             tp = entry - tp_dist
 
         reason = (
-            f"combined={combined:+.3f} > thr={FIXED_THRESHOLD:.3f} | "
-            f"a_mr={alpha_mr:+.2f} a_mom={alpha_mom:+.2f} a_vol={alpha_vol:+.2f} | "
+            f"mode={mode} | combined={signal_strength:+.2f} | "
+            f"a_mr={alpha_mr:+.2f} a_mom={alpha_mom:+.2f} "
+            f"z={z_vwap:+.2f} vol_reg={vol_regime:+.2f} | "
             f"vol10={vol10:.6f} | session={session}"
         )
 
