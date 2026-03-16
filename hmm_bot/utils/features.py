@@ -253,18 +253,40 @@ def build_alpha_features(df: pd.DataFrame) -> pd.DataFrame:
     # This is a fallback composite only used if regime is unknown
     combined = alpha_mr  # default to mean reversion
 
+    # ── EXHAUSTION DETECTOR ───────────────────────────────────────────────────
+    # Problem: a large 600-pip move looks like "momentum" but may be exhausted
+    # Solution: compare RECENT momentum to LONGER-TERM momentum
+    # If recent (20-bar) has slowed vs long-term (60-bar) → exhaustion signal
+
+    r20_norm  = r20 / vol50.replace(0, np.nan)
+    r20_norm  = r20_norm.clip(-5, 5)
+
+    # Exhaustion = recent momentum has decelerated vs 60-bar trend
+    # Positive exhaustion_long = was going up, slowing down = sell setup
+    exhaustion_long  = alpha_mom - r20_norm   # > 0 means trend slowing (was up, now flat)
+    exhaustion_short = r20_norm - (close.pct_change(5) / vol10.replace(0, np.nan)).clip(-5,5)
+
+    # ── MEAN REVERSION QUALITY ────────────────────────────────────────────────
+    # How far is price from equilibrium RELATIVE to current vol?
+    # This is the purest mean reversion entry quality score
+    # |z_vwap| > 2 AND vol_regime < 0 (shrinking vol) = ideal MR setup
+    mr_quality = np.abs(z_vwap) * (1.0 - vol_regime.clip(-1, 1))
+    # mr_quality > 2.0 = high quality mean reversion setup
+
     result = pd.DataFrame({
-        "r5":             r5,
-        "r20":            r20,
-        "r60":            r60,
-        "vol10":          vol10,
-        "vol50":          vol50,
-        "z_vwap":         z_vwap,
-        "trend_strength": trend_strength,
-        "vol_regime":     vol_regime,
-        "alpha_mr":       alpha_mr,
-        "alpha_mom":      alpha_mom,
-        "combined_alpha": combined,
+    "r5":              r5,
+    "r20":             r20,
+    "r60":             r60,
+    "vol10":           vol10,
+    "vol50":           vol50,
+    "z_vwap":          z_vwap,
+    "trend_strength":  trend_strength,
+    "vol_regime":      vol_regime,
+    "alpha_mr":        alpha_mr,
+    "alpha_mom":       alpha_mom,
+    "exhaustion_long": exhaustion_long,   # NEW
+    "mr_quality":      mr_quality,        # NEW
+    "combined_alpha":  combined,
     }, index=df.index)
 
     result.replace([np.inf, -np.inf], np.nan, inplace=True)

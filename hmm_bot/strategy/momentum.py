@@ -67,6 +67,8 @@ class MomentumStrategy(StrategyBase):
         vol10     = prev.get("vol10",     float("nan"))
         z_vwap    = prev.get("z_vwap",    float("nan"))
         vol_regime = prev.get("vol_regime", float("nan"))
+        mr_quality      = prev.get("mr_quality",      float("nan"))
+        exhaustion_long = prev.get("exhaustion_long", float("nan"))
 
         if any(np.isnan(v) for v in [alpha_mr, alpha_mom, vol10, z_vwap]):
             return None
@@ -92,12 +94,12 @@ class MomentumStrategy(StrategyBase):
             # short-term alpha_mr shows a pullback opportunity
             mode = "momentum_pullback"
 
-            if alpha_mom > 1.5 and alpha_mr > 1.0:
+            if alpha_mom > 1.5 and alpha_mr > 2.0:
                 # 60-min uptrend, 5-min pullback → BUY the dip
                 direction = "BUY"
                 signal_strength = min(alpha_mr, 5.0)
 
-            elif alpha_mom < -1.5 and alpha_mr < -1.0:
+            elif alpha_mom < -1.5 and alpha_mr < -2.0:
                 # 60-min downtrend, 5-min bounce → SELL the rally
                 direction = "SELL"
                 signal_strength = min(abs(alpha_mr), 5.0)
@@ -107,12 +109,12 @@ class MomentumStrategy(StrategyBase):
             # Only when 60-min momentum is NOT strongly opposing
             mode = "mean_rev"
 
-            if alpha_mr > 2.0 and alpha_mom > -3.0:
+            if alpha_mr > 1.5 and alpha_mom > -3.0:
                 # Price extended DOWN (z_vwap < -2), not in downtrend → BUY
                 direction = "BUY"
                 signal_strength = min(alpha_mr, 5.0)
 
-            elif alpha_mr < -2.0 and alpha_mom < 3.0:
+            elif alpha_mr < -1.5 and alpha_mom < 3.0:
                 # Price extended UP (z_vwap > +2), not in uptrend → SELL
                 direction = "SELL"
                 signal_strength = min(abs(alpha_mr), 5.0)
