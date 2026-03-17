@@ -15,6 +15,9 @@ Signal format:
         "reason":    str,               # human-readable trigger description
     }
     OR None — meaning no trade this bar.
+
+All strategies receive bias_4h (4H trend direction) and can use it
+to filter trades against the higher-timeframe trend.
 """
 
 from __future__ import annotations
@@ -51,6 +54,7 @@ class StrategyBase(ABC):
         df: pd.DataFrame,
         regime: Optional[int] = None,
         session: Optional[str] = None,
+        bias_4h: str = "NEUTRAL",
     ) -> Optional[dict]:
         """
         Analyse the latest closed candle and produce a trade signal.
@@ -61,6 +65,7 @@ class StrategyBase(ABC):
                      None during HMM warm-up — strategy decides whether to trade.
             session: Active session label from helpers.detect_session().
                      None if called without session context.
+            bias_4h: Higher-timeframe trend direction ("UP", "DOWN", "NEUTRAL").
 
         Returns:
             Signal dict:

@@ -292,11 +292,18 @@ def main() -> None:
             # ── Detect active session (for routing) ────────────────────────────
             session = detect_session(CONFIG, candle_time)
 
+            # ── 4H bias — filter signals against higher-timeframe trend ──────
+            bias_4h = data_feed.get_4h_bias(
+                ema_fast=CONFIG.get("mtf", {}).get("bias_ema_fast", 50),
+                ema_slow=CONFIG.get("mtf", {}).get("bias_ema_slow", 200),
+            )
+
             # ── Signal generation via router ───────────────────────────────────
             signal = router.route(
                 df,
                 candle_time=candle_time,
                 regime=regime,
+                bias_4h=bias_4h,
                 regime_probabilities=regime_probs,
             )
 
