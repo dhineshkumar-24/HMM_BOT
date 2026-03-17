@@ -52,7 +52,7 @@ REGIME_NAMES: dict[int, str] = {
     REGIME_HIGH_VOL:    "high_volatility",
 }
 
-CONFIDENCE_THRESHOLD: float = 0.60   # Minimum posterior probability to act
+CONFIDENCE_THRESHOLD: float = 0.70   # Minimum posterior probability to act
 N_STATES:             int   = 3
 N_TRAINING_BARS:      int   = 5000
 N_PREDICTION_BARS:    int   = 200
@@ -113,7 +113,7 @@ class HMMRegimeDetector:
     def __init__(
         self,
         n_states:      int   = N_STATES,
-        n_iter:        int   = 100,
+        n_iter:        int   = 150,
         n_seeds:       int   = N_TRAINING_SEEDS,
         model_path:    str   = "models/hmm.pkl",
         n_train_bars:  int   = N_TRAINING_BARS,
@@ -255,10 +255,10 @@ class HMMRegimeDetector:
         df_slice = df.tail(n).copy()
 
         features = build_feature_matrix(df_slice)
-        if len(features) < 50:
+        if len(features) < 70:
             if not self._warmup_logged:
                 logger.info(
-                    f"HMM warming up: {len(features)}/50 valid feature rows "
+                    f"HMM warming up: {len(features)}/70 valid feature rows "
                     f"— defaulting to {self.regime_name(REGIME_MEAN_REVERT)}."
                 )
                 self._warmup_logged = True

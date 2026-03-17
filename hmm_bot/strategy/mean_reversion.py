@@ -123,6 +123,7 @@ class MeanReversionStrategy(StrategyBase):
         df: pd.DataFrame,
         regime: Optional[int] = None,
         session: Optional[str] = None,
+        bias_4h: str = "NEUTRAL",
     ) -> Optional[dict]:
         """
         Run mean-reversion entry logic on the most recent closed candle.
@@ -189,6 +190,14 @@ class MeanReversionStrategy(StrategyBase):
             )
 
         if direction is None:
+            return None
+
+        # ── Filter: 4H bias — don't fade the higher-timeframe trend ──────────
+        if bias_4h == "DOWN" and direction == "BUY":
+            logger.debug("MR filter: 4H bias DOWN, skipping BUY")
+            return None
+        if bias_4h == "UP" and direction == "SELL":
+            logger.debug("MR filter: 4H bias UP, skipping SELL")
             return None
 
         # ── Compute SL / TP ────────────────────────────────────────────────────

@@ -206,7 +206,13 @@ def _run_single_backtest(df, CONFIG, hmm, args, symbol):
     # Train HMM on training portion
     if hmm is not None and not hmm.is_trained and args.train_hmm:
         print("Training HMM on training data...")
-        hmm.fit(df_train)
+        if not mt5.initialize():
+            print("ERROR: MT5 failed to initialize for H1 data.")
+            sys.exit(1)
+        df_1h = load_mt5_history(symbol, mt5.TIMEFRAME_H1, bars =6000)
+
+        mt5.shutdown()
+        hmm.fit(df_1h)
         hmm.save()
         print("HMM saved.")
 

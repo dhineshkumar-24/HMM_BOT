@@ -51,7 +51,7 @@ class HMMModel:
         hmm_cfg = config.get("hmm", {})
 
         self.n_components       = hmm_cfg.get("n_components", 3)
-        self.n_iter             = hmm_cfg.get("n_iter", 100)
+        self.n_iter             = hmm_cfg.get("n_iter", 150)
         self.covariance_type    = hmm_cfg.get("covariance_type", "full")
         self.model_path         = hmm_cfg.get("model_path", "models/hmm_state.pkl")
         self.confidence_threshold = hmm_cfg.get("confidence_threshold", 0.65)
