@@ -112,13 +112,13 @@ class MomentumStrategy(StrategyBase):
                 ema_accel_up   = ema21_curr > ema21_prev   # EMA21 still rising
                 ema_accel_down = ema21_curr < ema21_prev   # EMA21 still falling
 
-                if alpha_mom > 3.5 and alpha_mr > 2.0:
+                if alpha_mom > 4.0 and alpha_mr > 2.5:
                     if not (trend_up and ema_accel_up):
                         return None
                     direction = "BUY"
                     signal_strength = min(alpha_mr, 5.0)
 
-                elif alpha_mom < -3.5 and alpha_mr < -2.0:
+                elif alpha_mom < -4.0 and alpha_mr < -2.5:
                     if not (trend_down and ema_accel_down):
                         return None
                     direction = "SELL"
@@ -126,13 +126,13 @@ class MomentumStrategy(StrategyBase):
 
             # London — standard EMA check
             else:
-                if alpha_mom > 3.5 and alpha_mr > 2.0:
+                if alpha_mom > 4.5 and alpha_mr > 2.5:
                     if not trend_up:
                         return None
                     direction = "BUY"
                     signal_strength = min(alpha_mr, 5.0)
 
-                elif alpha_mom < -3.5 and alpha_mr < -2.0:
+                elif alpha_mom < -4.5 and alpha_mr < -3.0:
                     if not trend_down:
                         return None
                     direction = "SELL"
@@ -151,7 +151,7 @@ class MomentumStrategy(StrategyBase):
                 direction = "BUY"
                 signal_strength = min(alpha_mr, 5.0)
 
-            elif alpha_mr < -2.0 and alpha_mom < 3.0:
+            elif alpha_mr < -2.0 and alpha_mom < -3.0:  
                 # Price extended UP (z_vwap > +2), not in uptrend → SELL
                 direction = "SELL"
                 signal_strength = min(abs(alpha_mr), 5.0)
