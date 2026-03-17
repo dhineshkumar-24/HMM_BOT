@@ -49,3 +49,34 @@ class DataFeed:
         df = pd.DataFrame(rates)
         df["time"] = pd.to_datetime(df["time"], unit="s")
         return df
+
+    def get_candles_tf(self, timeframe_str: str, n: int = 200):
+        """Fetch candles for any timeframe string: H4, H1, M15, M1."""
+        tf_map = {
+            "M1":  mt5.TIMEFRAME_M1,
+            "M5":  mt5.TIMEFRAME_M5,
+            "M15": mt5.TIMEFRAME_M15,
+            "H1":  mt5.TIMEFRAME_H1,
+            "H4":  mt5.TIMEFRAME_H4,
+        }
+        tf = tf_map.get(timeframe_str, mt5.TIMEFRAME_M1)
+        rates = mt5.copy_rates_from_pos(self.symbol, tf, 0, n)
+        if rates is None or len(rates) == 0:
+            return None
+        df = pd.DataFrame(rates)
+        df["time"] = pd.to_datetime(df["time"], unit="s")
+        return df
+
+    def get_4h_bias(self, ema_fast: int = 50, ema_slow: int = 200) -> str:
+        """Return 'UP', 'DOWN', or 'NEUTRAL' based on 4H EMA alignment."""
+        df = self.get_candles_tf("H4", n=250)
+        if df is None or len(df) < ema_slow:
+            return "NEUTRAL"
+        close = df["close"]
+        ema_f = close.ewm(span=ema_fast, adjust=False).mean()
+        ema_s = close.ewm(span=ema_slow, adjust=False).mean()
+        if float(ema_f.iloc[-1]) > float(ema_s.iloc[-1]):
+            return "UP"
+        elif float(ema_f.iloc[-1]) < float(ema_s.iloc[-1]):
+            return "DOWN"
+        return "NEUTRAL"

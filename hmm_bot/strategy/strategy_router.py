@@ -131,6 +131,7 @@ class StrategyRouter:
         df: pd.DataFrame,
         candle_time,
         regime: Optional[int] = None,
+        bias_4h:     str = "NEUTRAL",
         regime_probabilities: Optional[np.ndarray] = None,
     ) -> Optional[dict]:
         """
@@ -180,7 +181,7 @@ class StrategyRouter:
             f"session={session} | regime={regime}"
         )
 
-        signal = strategy.generate_signal(df, regime=regime, session=session)
+        signal = strategy.generate_signal(df, regime=regime, session=session, bias_4h = bias_4h)
 
         if signal:
             signal["strategy"]   = strategy_name

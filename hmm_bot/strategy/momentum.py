@@ -55,6 +55,7 @@ class MomentumStrategy(StrategyBase):
         df:      pd.DataFrame,
         regime:  Optional[int] = None,
         session: Optional[str] = None,
+        bias_4h:   str = "NEUTRAL",
     ) -> Optional[dict]:
 
         if len(df) < 120:
@@ -89,32 +90,68 @@ class MomentumStrategy(StrategyBase):
         mode = "mean_rev"
 
         if regime == REGIME_TRENDING:
-            # In trending regime: momentum-on-pullback
-            # Only enter when a_mom confirms direction AND
-            # short-term alpha_mr shows a pullback opportunity
             mode = "momentum_pullback"
 
-            if alpha_mom > 1.5 and alpha_mr > 2.0:
-                # 60-min uptrend, 5-min pullback → BUY the dip
-                direction = "BUY"
-                signal_strength = min(alpha_mr, 5.0)
+            # ── EMA direction filter — fast EMAs for M1 ────────────────
+            close_series = df["close"]
+            ema21  = close_series.ewm(span=21,  adjust=False).mean()
+            ema50  = close_series.ewm(span=50,  adjust=False).mean()
+            ema100 = close_series.ewm(span=100, adjust=False).mean()
 
-            elif alpha_mom < -1.5 and alpha_mr < -2.0:
-                # 60-min downtrend, 5-min bounce → SELL the rally
-                direction = "SELL"
-                signal_strength = min(abs(alpha_mr), 5.0)
+            # All three must agree on direction
+            trend_up   = (float(ema21.iloc[-2]) > float(ema50.iloc[-2]) and
+                          float(ema50.iloc[-2]) > float(ema100.iloc[-2]))
+            trend_down = (float(ema21.iloc[-2]) < float(ema50.iloc[-2]) and
+                          float(ema50.iloc[-2]) < float(ema100.iloc[-2]))
+
+            # New York — require stronger alignment
+            if session == "newyork":
+                # Also check momentum is accelerating not fading
+                ema21_prev = float(ema21.iloc[-3])
+                ema21_curr = float(ema21.iloc[-2])
+                ema_accel_up   = ema21_curr > ema21_prev   # EMA21 still rising
+                ema_accel_down = ema21_curr < ema21_prev   # EMA21 still falling
+
+                if alpha_mom > 3.5 and alpha_mr > 2.0:
+                    if not (trend_up and ema_accel_up):
+                        return None
+                    direction = "BUY"
+                    signal_strength = min(alpha_mr, 5.0)
+
+                elif alpha_mom < -3.5 and alpha_mr < -2.0:
+                    if not (trend_down and ema_accel_down):
+                        return None
+                    direction = "SELL"
+                    signal_strength = min(abs(alpha_mr), 5.0)
+
+            # London — standard EMA check
+            else:
+                if alpha_mom > 3.5 and alpha_mr > 2.0:
+                    if not trend_up:
+                        return None
+                    direction = "BUY"
+                    signal_strength = min(alpha_mr, 5.0)
+
+                elif alpha_mom < -3.5 and alpha_mr < -2.0:
+                    if not trend_down:
+                        return None
+                    direction = "SELL"
+                    signal_strength = min(abs(alpha_mr), 5.0)
 
         elif regime == REGIME_MEAN_REVERT or regime is None:
             # In mean-reverting regime: fade Z-score extremes
             # Only when 60-min momentum is NOT strongly opposing
             mode = "mean_rev"
 
+            if session == "newyork":  
+                return None
+
             if alpha_mr > 1.5 and alpha_mom > -3.0:
                 # Price extended DOWN (z_vwap < -2), not in downtrend → BUY
                 direction = "BUY"
                 signal_strength = min(alpha_mr, 5.0)
 
-            elif alpha_mr < -1.5 and alpha_mom < 3.0:
+            elif alpha_mr < -2.0 and alpha_mom < 3.0:
                 # Price extended UP (z_vwap > +2), not in uptrend → SELL
                 direction = "SELL"
                 signal_strength = min(abs(alpha_mr), 5.0)
@@ -124,13 +161,19 @@ class MomentumStrategy(StrategyBase):
             # Reduce threshold — need stronger signal
             mode = "high_vol_mr"
 
-            if alpha_mr > 2.0 and alpha_mom > -3.0:
+            if alpha_mr > 2.0 and alpha_mom > 0:
                 direction = "BUY"
                 signal_strength = min(alpha_mr, 5.0)
 
-            elif alpha_mr < -2.0 and alpha_mom < 3.0:
+            elif alpha_mr < -2.0 and alpha_mom < 0:
                 direction = "SELL"
                 signal_strength = min(abs(alpha_mr), 5.0)
+
+        if bias_4h == "DOWN" and direction == "BUY":
+            return None
+        if bias_4h == "UP" and direction == "SELL":
+            return None
+        
 
         if direction is None:
             return None
@@ -142,14 +185,14 @@ class MomentumStrategy(StrategyBase):
             sl_mult = max(self.sl_vol_mult * 1.2, 4.5)
             tp_mult = max(self.tp_vol_mult * 1.5, 8.0)  # trend trades go further
         elif regime == REGIME_HIGH_VOL:
-            sl_mult = max(self.sl_vol_mult * 1.5, 5.0)  # wider SL for high vol
-            tp_mult = self.tp_vol_mult
+            sl_mult = 3.0   # tighter SL in high vol
+            tp_mult = 7.0   # wider TP — R:R = 2.0
         else:
             sl_mult = self.sl_vol_mult
             tp_mult = self.tp_vol_mult
 
-        sl_dist = max(vol_price * sl_mult, 0.00080)
-        tp_dist = max(vol_price * tp_mult, sl_dist * 1.8)
+        sl_dist = max(vol_price * sl_mult, 0.00100)
+        tp_dist = max(vol_price * tp_mult, sl_dist * 2.0)
 
         # Scale TP by signal strength: stronger signal = allow larger target
         tp_dist = tp_dist * (1.0 + 0.10 * (signal_strength - 2.0))

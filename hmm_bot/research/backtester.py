@@ -132,6 +132,9 @@ def run_backtest(
         regime_labels = _regimes
     else:
         regime_labels = [None] * total_bars
+    # ── Pre-compute 4H bias once for all bars ─────────────────────────────────
+    print("[Backtester] Pre-computing 4H bias from 1M data...")
+    bias_series = _compute_4h_bias_series(df)
 
     # ── Main loop ─────────────────────────────────────────────────────────────
     WIN_BAR = 60    # minimum bars before any signal
@@ -142,13 +145,20 @@ def run_backtest(
         regime  = regime_labels[i]
         candle_time = bar["time"]
 
+        bias_4h = str(bias_series.iloc[i]) if i < len(bias_series) else "NEUTRAL"
+
         # ── Update open positions ──────────────────────────────────────────────
         newly_closed = sim.update(bar, i)
         for t in newly_closed:
             balance = max(0, balance + t.net_pnl)
             pending_pnl = 0.0
         # ── Time stop — exit after 30 bars if trade still open ────────────────
-        TIME_STOP_BARS = 30
+        if regime == 2:          # HIGH_VOL — TP farther, needs more time
+            TIME_STOP_BARS = 22
+        elif regime == 1:        # TRENDING — moderate
+            TIME_STOP_BARS = 16
+        else:                    # MEAN_REVERT or warmup
+            TIME_STOP_BARS = 12
         if sim.has_open_trade:
             open_trade = sim._open_trades[0]
             bars_open  = i - open_trade.entry_bar
@@ -156,6 +166,23 @@ def run_backtest(
                 for t in sim.close_all(bar, i):
                     balance = max(0, balance + t.net_pnl)
                 logger.debug(f"Time stop hit at bar {i} — {bars_open} bars open")
+        # ── Move SL to breakeven once trade reaches 40% of TP distance ──────────
+        if sim.has_open_trade:
+            open_trade = sim._open_trades[0]
+            entry_price = open_trade.entry_price
+            current_price = float(bar["close"])
+            tp_price = open_trade.tp
+            sl_price = open_trade.sl
+
+            tp_dist = abs(tp_price - entry_price)
+            price_moved = abs(current_price - entry_price)
+
+            # If price has moved 40% toward TP, lock in breakeven
+            if price_moved >= tp_dist * 0.40:
+                if open_trade.direction == "BUY" and sl_price < entry_price:
+                    open_trade.sl = entry_price + 0.00005  # 0.5 pip above entry
+                elif open_trade.direction == "SELL" and sl_price > entry_price:
+                    open_trade.sl = entry_price - 0.00005  # 0.5 pip below entry
 
         equity_curve.append(balance)
 
@@ -198,6 +225,7 @@ def run_backtest(
                 window,
                 candle_time = candle_time,
                 regime      = regime,
+                bias_4h     = bias_4h
             )
         else:
             signal = strategy.generate_signal(window, regime=regime)
@@ -225,7 +253,7 @@ def run_backtest(
 
         # Enforce minimum SL of 8 pips (0.00080) on EURUSD M1
         # M1 ATR can be 1-3 pips — too tight for spread+slippage+noise
-        MIN_SL_PIPS = 0.00050
+        MIN_SL_PIPS = 0.00100
         sl_dist = max(sl_dist, MIN_SL_PIPS)
         tp_dist = max(tp_dist, sl_dist * 2.0)   # maintain at least 1.8 R:R
 
@@ -387,3 +415,19 @@ def run_walk_forward_backtest(
         results.append(res)
         
     return results
+
+def _compute_4h_bias_series(df_1m: pd.DataFrame) -> pd.Series:
+    """
+    Resample 1M OHLCV to 4H and compute EMA50 > EMA200 bias.
+    Returns a Series indexed by 1M bar index with values 'UP', 'DOWN', 'NEUTRAL'.
+    """
+    df = df_1m.copy().set_index("time")
+    df_4h = df["close"].resample("4H").last().dropna()
+    ema50  = df_4h.ewm(span=50,  adjust=False).mean()
+    ema200 = df_4h.ewm(span=200, adjust=False).mean()
+    bias_4h_ts = pd.Series("NEUTRAL", index=df_4h.index)
+    bias_4h_ts[ema50 > ema200] = "UP"
+    bias_4h_ts[ema50 < ema200] = "DOWN"
+    bias_1m = bias_4h_ts.reindex(df.index, method="ffill").fillna("NEUTRAL")
+    bias_1m.index = df_1m.index
+    return bias_1m

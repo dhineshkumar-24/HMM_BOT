@@ -18,13 +18,13 @@ logger = setup_logger("RegimeFilters")
 # Regime label constants (matches hmm: regime_names in settings.yaml)
 REGIME_MEAN_REVERT = 0
 REGIME_TRENDING    = 1
-REGIME_NOISY       = 2
+REGIME_HIGH_VOL    = 2
 
 # Risk scaling per regime — multiplied against base risk_per_trade
 REGIME_RISK_SCALE: dict[int, float] = {
     REGIME_MEAN_REVERT: 1.0,   # Full risk in mean-reverting regime
     REGIME_TRENDING:    0.75,  # Reduced risk — trend strategies less certain
-    REGIME_NOISY:       0.0,   # No trading in noisy/uncertain regime
+    REGIME_HIGH_VOL:    0.40,   # No trading in noisy/uncertain regime
 }
 
 

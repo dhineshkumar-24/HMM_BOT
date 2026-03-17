@@ -3,9 +3,18 @@ project:
   version: "2.0.0"
   magic_number: 234567
 
+
+mtf:
+  bias_tf:    "H4"    # 4H trend direction
+  regime_tf:  "H1"    # 1H HMM input
+  signal_tf:  "M15"   # 15M alpha signal
+  entry_tf:   "M1"    # 1M execution
+  bias_ema_fast: 50
+  bias_ema_slow: 200
+
 trading:
   symbol: "EURUSD"
-  timeframe: "M1"
+  timeframe: "M5"
   risk_per_trade: 0.01          # 1 % per trade
   max_daily_drawdown_pct: 0.03   # 3% (legacy key — also in risk:)
   max_total_drawdown_pct: 0.15   # 15% (legacy key)
@@ -24,7 +33,7 @@ strategy:
   alpha:
     threshold_percentile: 70
     tp_vol_mult: 6.0
-    sl_vol_mult: 4.0
+    sl_vol_mult: 3.0
     min_edge_pips: 0.00010
 
   # Mean Reversion (Asian + MEAN_REVERT regime)
@@ -63,13 +72,13 @@ sessions:
 
 filters:
   max_spread_pips: 2.0
-  min_volatility_percentile: 0.2
-  max_volatility_percentile: 0.8
+  min_volatility_percentile: 0.2 #Minimum volatility percentile 
+  max_volatility_percentile: 0.8 #Maximum volatility percentile
 
 execution:
   order_comment: "HMM Bot"
-  slippage_pips: 20
-  deviation: 20
+  slippage_pips: 2 #Maximum price difference allowed between requested price and executed price.
+  deviation: 20 #allowing the slippage 2*10 = 20 pips
 
 # ── Risk Management ──────────────────────────────────────────────────────────
 risk:
@@ -80,14 +89,14 @@ risk:
 
 # ── HMM Regime Detection ──────────────────────────────────────────────────────
 hmm:
-  n_components: 3
-  n_iter: 100
-  covariance_type: "full"
-  confidence_threshold: 0.52
+  n_components: 3 # Number of regimes
+  n_iter: 150 # Number of iterations for training - Expectation-Maximization (EM
+  covariance_type: "full" # Type of covariance matrix
+  confidence_threshold: 0.70 # Confidence threshold for regime detection
   regime_names:
     0: "mean_reverting"
     1: "trending"
     2: "high_volatility"
   model_path: "models/hmm.pkl"
-  feature_lookback: 5000
-  retrain_interval: 1000
+  feature_lookback: 6000 # Number of bars to look back for feature extraction
+  retrain_interval: 1500 # Number of bars to look back for feature extraction new candles
