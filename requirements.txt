@@ -1,5 +1,0 @@
-MetaTrader5
-pandas
-numpy
-pyyaml
-matplotlib
