@@ -35,7 +35,8 @@ class MomentumStrategy(StrategyBase):
 
         self.tp_vol_mult        = alpha_cfg.get("tp_vol_mult", 6.0)
         self.sl_vol_mult        = alpha_cfg.get("sl_vol_mult", 4.0)
-        self.min_edge_over_cost = alpha_cfg.get("min_edge_pips", 0.00010)
+        self.min_edge_over_cost = alpha_cfg.get("min_edge_pips", 0.00020)
+        self.min_combined_score = alpha_cfg.get("min_combined_score", 2.20)
 
         logger.info(
             f"AlphaStrategy ready | "
@@ -176,6 +177,10 @@ class MomentumStrategy(StrategyBase):
         
 
         if direction is None:
+            return None
+        
+        # ── Gate: reject weak signals ─────────────────────────────────────────
+        if signal_strength < self.min_combined_score:
             return None
 
         # ── SL / TP — regime-scaled ───────────────────────────────────────────

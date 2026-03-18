@@ -1,6 +1,7 @@
 MetaTrader5
 pandas
 numpy
+pyarrow
 pyyaml
 matplotlib
 hmmlearn>=0.3.0

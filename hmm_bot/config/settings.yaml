@@ -31,19 +31,20 @@ strategy:
   hurst_threshold: 0.45
 
   alpha:
-    threshold_percentile: 70
+    threshold_percentile: 80
     tp_vol_mult: 6.0
     sl_vol_mult: 3.0
-    min_edge_pips: 0.00010
+    min_edge_pips: 0.00020
+    min_combined_score: 1.80 
 
   # Mean Reversion (Asian + MEAN_REVERT regime)
   mean_reversion:
     z_score_trigger: 2.0         # |Z| >= this to consider entry
     z_score_exit: 0.0            # Z returns here → TP = rolling mean
-    rsi_overbought: 70           # RSI must exceed this for SELL
-    rsi_oversold: 30             # RSI must be below this for BUY
-    ema_slope_flat: 0.00007      # |EMA50 slope| must be <= this (flat)
-    adx_max: 20                  # ADX must be < this (no strong trend)
+    rsi_overbought: 72           # RSI must exceed this for SELL
+    rsi_oversold: 28             # RSI must be below this for BUY
+    ema_slope_flat: 0.00005      # |EMA50 slope| must be <= this (flat)
+    adx_max: 18                  # ADX must be < this (no strong trend)
     sl_atr_mult: 2.0             # SL = ATR * sl_atr_mult
     trail_atr_mult: 1.5          # Trailing stop = ATR * trail_atr_mult
     min_rr: 1.3
@@ -79,6 +80,14 @@ execution:
   order_comment: "HMM Bot"
   slippage_pips: 2 #Maximum price difference allowed between requested price and executed price.
   deviation: 20 #allowing the slippage 2*10 = 20 pips
+
+# ── Date-Based Backtesting ────────────────────────────────────────────────────
+backtest:
+  start_date:   "2020-01-24"      # Format: YYYY-MM-DD
+  end_date:     "2026-01-01"      # Format: YYYY-MM-DD
+  train_split:  0.70              # 70% train, 30% test
+  cache_dir:    "data/cache"      # Where to store Parquet cache files
+  force_refetch: false            # Set true to ignore cache and re-fetch
 
 # ── Risk Management ──────────────────────────────────────────────────────────
 risk:

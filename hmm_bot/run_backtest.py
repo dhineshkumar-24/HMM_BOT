@@ -42,10 +42,11 @@ if PROJECT_ROOT not in sys.path:
 
 # ── Core imports ──────────────────────────────────────────────────────────────
 from config              import load_config
-from research.data_loader     import load_mt5_history, load_csv_history
+from research.data_loader import load_mt5_history, load_csv_history, load_mt5_history_range
 from research.backtester      import run_backtest
 from research.walk_forward    import WalkForwardEngine
 from research.report_generator import generate_report, generate_walk_forward_report
+from research.report_generator_html import generate_html_report
 from research.performance_metrics import print_metrics
 from strategy.strategy_router import StrategyRouter
 from core.hmm_model           import HMMRegimeDetector
@@ -67,6 +68,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--bars", type=int, default=50_000,
         help="Number of historical bars to load (default: 50,000)",
+    )
+    parser.add_argument(
+        "--start-date", type=str, default=None,
+        help="Start date for date-based fetch (YYYY-MM-DD). Overrides --bars.",
+    )
+    parser.add_argument(
+        "--end-date", type=str, default=None,
+        help="End date for date-based fetch (YYYY-MM-DD). Default: today.",
+    )
+    parser.add_argument(
+        "--force-refetch", action="store_true", default=False,
+        help="Ignore local Parquet cache and re-fetch from MT5.",
     )
     parser.add_argument(
         "--train-frac", type=float, default=0.7,
@@ -142,24 +155,50 @@ def main():
     print("=" * 60)
     print(f"  Mode         : {args.mode}")
     print(f"  Symbol       : {SYMBOL}")
-    print(f"  Bars         : {args.bars:,}")
+    if args.start_date:
+        print(f"  Date Range   : {args.start_date} → {args.end_date or 'today'}")
+    else:
+        print(f"  Bars         : {args.bars:,}")
     print(f"  Balance      : ${args.balance:,.2f}")
     print(f"  HMM          : {'disabled' if args.no_hmm else ('load' if args.load_hmm else 'train')}")
     print(f"  Costs        : spread={args.spread}p | slip={args.slippage}p | comm=${args.commission}")
     print("=" * 60)
 
+
     # ── Load historical data ───────────────────────────────────────────────────
     if args.csv:
         df = load_csv_history(args.csv)
+
+    elif args.start_date:
+        # ── DATE-RANGE mode (new) ──────────────────────────────────────────────
+        from datetime import datetime
+        end = args.end_date or datetime.now().strftime("%Y-%m-%d")
+        bt_cfg    = CONFIG.get("backtest", {})
+        cache_dir = bt_cfg.get("cache_dir", "data/cache")
+
+        print(f"\n[Date-Range Mode] {args.start_date} → {end} | Symbol: {SYMBOL}")
+        if not mt5.initialize():
+            print("ERROR: MT5 failed to initialize. Open MT5 terminal and retry.")
+            sys.exit(1)
+
+        df = load_mt5_history_range(
+            symbol       = SYMBOL,
+            timeframe    = TIMEFRAME,
+            start_date   = args.start_date,
+            end_date     = end,
+            cache_dir    = cache_dir,
+            force_refetch= args.force_refetch,
+        )
+        mt5.shutdown()
+
     else:
+        # ── BAR-COUNT mode (original — unchanged) ─────────────────────────────
         print(f"\nLoading {args.bars:,} bars of {SYMBOL} from MT5...")
         if not mt5.initialize():
             print("ERROR: MT5 failed to initialize. Open MT5 terminal and retry.")
             sys.exit(1)
         df = load_mt5_history(SYMBOL, TIMEFRAME, bars=args.bars)
         mt5.shutdown()
-
-    print(f"Data range: {df['time'].iloc[0]} → {df['time'].iloc[-1]} ({len(df):,} bars)")
 
     # ── HMM setup ───────────────────────────────────────────────────────────────
     hmm = None
@@ -195,13 +234,17 @@ def main():
 
 def _run_single_backtest(df, CONFIG, hmm, args, symbol):
     """Standard chronological backtest with optional HMM training."""
-    n     = len(df)
-    split = int(n * args.train_frac)
+    n          = len(df)
+    # Pull split from config if not overridden by CLI
+    cfg_split  = CONFIG.get("backtest", {}).get("train_split", 0.70)
+    split_frac = args.train_frac if args.train_frac != 0.7 else cfg_split
+    split      = int(n * split_frac)
 
     df_train = df.iloc[:split].reset_index(drop=True)
     df_test  = df.iloc[split:].reset_index(drop=True)
 
-    print(f"\nTrain: {len(df_train):,} bars | Test: {len(df_test):,} bars")
+    print(f"\nDate range : {df['time'].iloc[0].date()} → {df['time'].iloc[-1].date()}")
+    print(f"Train/Test : {split_frac:.0%} / {1-split_frac:.0%}")
 
     # Train HMM on training portion
     if hmm is not None and not hmm.is_trained and args.train_hmm:
@@ -235,6 +278,19 @@ def _run_single_backtest(df, CONFIG, hmm, args, symbol):
         label       = f"{symbol}_backtest",
         save_charts = not args.no_charts,
     )
+
+    # ── HTML dashboard ────────────────────────────────────────────────────────
+    html_path = generate_html_report(
+        metrics      = result.metrics,
+        trades       = result.trades,
+        equity_curve = result.equity_curve,
+        symbol       = symbol,
+        args         = args,
+        output_dir   = "research/reports",
+    )
+    print(f"[Report] Dashboard → {html_path}")
+    import webbrowser; webbrowser.open(f"file:///{html_path}")
+    # ─────────────────────────────────────────────────────────────────────────
 
     # Validation gate
     if result.metrics.get("passed"):
