@@ -21,7 +21,7 @@ from core.hmm_model         import (
     REGIME_HIGH_VOL,
 )
 
-logger = setup_logger("AlphaStrategy")
+logger = setup_logger("MomentumStrategy")
 
 ACTIVE_SESSIONS = ("london", "newyork", "asian")
 
@@ -35,9 +35,8 @@ class MomentumStrategy(StrategyBase):
 
         self.tp_vol_mult        = alpha_cfg.get("tp_vol_mult", 6.0)
         self.sl_vol_mult        = alpha_cfg.get("sl_vol_mult", 4.0)
-        self.min_edge_over_cost = alpha_cfg.get("min_edge_pips", 0.00020)
-        self.min_combined_score = alpha_cfg.get("min_combined_score", 2.20)
-
+        self.min_edge_over_cost = alpha_cfg.get("min_edge_pips", 0.00015)
+        self.min_combined_score = alpha_cfg.get("min_combined_score", 1.80)
         logger.info(
             f"AlphaStrategy ready | "
             f"Threshold: 70th percentile | "
@@ -90,7 +89,35 @@ class MomentumStrategy(StrategyBase):
         signal_strength = 0.0
         mode = "mean_rev"
 
-        if regime == REGIME_TRENDING:
+        if regime == REGIME_MEAN_REVERT or regime is None:
+            # In mean-reverting regime: fade Z-score extremes
+            # Only when 60-min momentum is NOT strongly opposing
+            mode = "mean_rev"
+
+            # if session == "newyork":  
+            #     return None
+
+            mr_threshold = 2.5 if session == "newyork" else 1.5
+
+            if alpha_mr > mr_threshold and alpha_mom > -3.0:
+                direction = "BUY"
+                signal_strength = min(alpha_mr, 5.0)
+
+            elif alpha_mr < -mr_threshold and alpha_mom < 3.0:
+                direction = "SELL"
+                signal_strength = min(abs(alpha_mr), 5.0)
+
+            if alpha_mr > 3.0 and alpha_mom > -2.5:
+                # Price extended DOWN (z_vwap <-2), not in downtrend → BUY
+                direction = "BUY"
+                signal_strength = min(alpha_mr, 5.0)
+
+            elif alpha_mr < -3.0 and alpha_mom < 2.5:  
+                # Price extended UP (z_vwap > +2), not in uptrend → SELL
+                direction = "SELL"
+                signal_strength = min(abs(alpha_mr), 5.0)
+
+        elif regime == REGIME_TRENDING:
             mode = "momentum_pullback"
 
             # ── EMA direction filter — fast EMAs for M1 ────────────────
@@ -113,13 +140,13 @@ class MomentumStrategy(StrategyBase):
                 ema_accel_up   = ema21_curr > ema21_prev   # EMA21 still rising
                 ema_accel_down = ema21_curr < ema21_prev   # EMA21 still falling
 
-                if alpha_mom > 4.0 and alpha_mr > 2.5:
+                if alpha_mom > 3.0 and alpha_mr > 1.0:
                     if not (trend_up and ema_accel_up):
                         return None
                     direction = "BUY"
                     signal_strength = min(alpha_mr, 5.0)
 
-                elif alpha_mom < -4.0 and alpha_mr < -2.5:
+                elif alpha_mom < -3.0 and alpha_mr < -1.0:
                     if not (trend_down and ema_accel_down):
                         return None
                     direction = "SELL"
@@ -127,35 +154,17 @@ class MomentumStrategy(StrategyBase):
 
             # London — standard EMA check
             else:
-                if alpha_mom > 4.5 and alpha_mr > 2.5:
+                if alpha_mom > 2.5 and alpha_mr > 1.0:
                     if not trend_up:
                         return None
                     direction = "BUY"
                     signal_strength = min(alpha_mr, 5.0)
 
-                elif alpha_mom < -4.5 and alpha_mr < -3.0:
+                elif alpha_mom < -2.5 and alpha_mr < -1.0:
                     if not trend_down:
                         return None
                     direction = "SELL"
                     signal_strength = min(abs(alpha_mr), 5.0)
-
-        elif regime == REGIME_MEAN_REVERT or regime is None:
-            # In mean-reverting regime: fade Z-score extremes
-            # Only when 60-min momentum is NOT strongly opposing
-            mode = "mean_rev"
-
-            if session == "newyork":  
-                return None
-
-            if alpha_mr > 1.5 and alpha_mom > -3.0:
-                # Price extended DOWN (z_vwap < -2), not in downtrend → BUY
-                direction = "BUY"
-                signal_strength = min(alpha_mr, 5.0)
-
-            elif alpha_mr < -2.0 and alpha_mom < -3.0:  
-                # Price extended UP (z_vwap > +2), not in uptrend → SELL
-                direction = "SELL"
-                signal_strength = min(abs(alpha_mr), 5.0)
 
         elif regime == REGIME_HIGH_VOL:
             # High vol: only take very high conviction mean reversion
@@ -179,7 +188,7 @@ class MomentumStrategy(StrategyBase):
         if direction is None:
             return None
         
-        # ── Gate: reject weak signals ─────────────────────────────────────────
+        #── Gate: reject weak signals ─────────────────────────────────────────
         if signal_strength < self.min_combined_score:
             return None
 

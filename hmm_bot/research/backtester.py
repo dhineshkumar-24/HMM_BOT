@@ -422,7 +422,7 @@ def _compute_4h_bias_series(df_1m: pd.DataFrame) -> pd.Series:
     Returns a Series indexed by 1M bar index with values 'UP', 'DOWN', 'NEUTRAL'.
     """
     df = df_1m.copy().set_index("time")
-    df_4h = df["close"].resample("4H").last().dropna()
+    df_4h = df["close"].resample("4h").last().dropna()
     ema50  = df_4h.ewm(span=50,  adjust=False).mean()
     ema200 = df_4h.ewm(span=200, adjust=False).mean()
     bias_4h_ts = pd.Series("NEUTRAL", index=df_4h.index)

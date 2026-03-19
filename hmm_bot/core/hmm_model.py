@@ -506,18 +506,31 @@ class HMMRegimeDetector:
         # HIGH_VOL = highest combined volatility score
         high_vol_state = int(np.argmax(combined_vol))
 
-        # TRENDING = highest autocorrelation AMONG remaining states
+        # TRENDING = only if autocorrelation is genuinely POSITIVE
+        # If both remaining states have negative autocorr, neither is truly trending
         remaining = [i for i in range(self.n_states) if i != high_vol_state]
-        trending_state = remaining[int(np.argmax([autocr_per_state[i] for i in remaining]))]
+        autocr_remaining = [autocr_per_state[i] for i in remaining]
+        best_idx = int(np.argmax(autocr_remaining))
+        best_trending_state = remaining[best_idx]
 
-        # MEAN_REVERT = whatever is left
-        mean_rev_state = [i for i in range(self.n_states)
-                        if i not in (high_vol_state, trending_state)][0]
+        if autocr_per_state[best_trending_state] > 0.02:
+            # Genuinely positive autocorr = trending market
+            trending_state = best_trending_state
+            mean_rev_state = [i for i in remaining if i != trending_state][0]
+        else:
+            # Both states are mean-reverting — assign by lower volatility
+            logger.warning(
+                "No state has positive autocorr — both remaining states "
+                "treated as MEAN_REVERT. Lower-vol state gets MR label."
+            )
+            vol_remaining = [rvol_per_state[i] for i in remaining]
+            mean_rev_state = remaining[int(np.argmin(vol_remaining))]
+            trending_state = remaining[int(np.argmax(vol_remaining))]
 
         label_map = {
-            mean_rev_state: REGIME_MEAN_REVERT,   # 0
-            trending_state: REGIME_TRENDING,       # 1
-            high_vol_state: REGIME_HIGH_VOL,       # 2
+            mean_rev_state: REGIME_MEAN_REVERT,
+            trending_state: REGIME_TRENDING,
+            high_vol_state: REGIME_HIGH_VOL,
         }
 
         logger.info("── State Label Alignment ─────────────────")
@@ -527,4 +540,3 @@ class HMMRegimeDetector:
         logger.info("──────────────────────────────────────────")
 
         return label_map
-

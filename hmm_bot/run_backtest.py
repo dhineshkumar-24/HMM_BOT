@@ -246,18 +246,24 @@ def _run_single_backtest(df, CONFIG, hmm, args, symbol):
     print(f"\nDate range : {df['time'].iloc[0].date()} → {df['time'].iloc[-1].date()}")
     print(f"Train/Test : {split_frac:.0%} / {1-split_frac:.0%}")
 
-    # Train HMM on training portion
+    # Train HMM on training portion — resample M5 train data to H1
+    # Never fetch live MT5 data here — that would cause future data leakage
     if hmm is not None and not hmm.is_trained and args.train_hmm:
-        print("Training HMM on training data...")
-        if not mt5.initialize():
-            print("ERROR: MT5 failed to initialize for H1 data.")
-            sys.exit(1)
-        df_1h = load_mt5_history(symbol, mt5.TIMEFRAME_H1, bars =6000)
-
-        mt5.shutdown()
-        hmm.fit(df_1h)
+        print("Training HMM on training set (resampled to H1)...")
+        df_train_h1 = (
+            df_train.set_index("time")["close"]
+            .resample("1h")
+            .last()
+            .dropna()
+            .reset_index()
+        )
+        df_train_h1["open"]        = df_train_h1["close"]
+        df_train_h1["high"]        = df_train_h1["close"]
+        df_train_h1["low"]         = df_train_h1["close"]
+        df_train_h1["tick_volume"] = 1
+        hmm.fit(df_train_h1)
         hmm.save()
-        print("HMM saved.")
+        print(f"HMM trained on {len(df_train_h1):,} H1 bars from train set only.")
 
     router = StrategyRouter(CONFIG)
     result = run_backtest(
@@ -321,6 +327,7 @@ def _run_walk_forward(df, CONFIG, args):
 
 def _run_grid_search(df, CONFIG, args):
     """Grid search parameter optimisation."""
+    _HERE = os.path.dirname(os.path.abspath(__file__))
     engine = WalkForwardEngine(
         config     = CONFIG,
         train_bars = args.train_bars,

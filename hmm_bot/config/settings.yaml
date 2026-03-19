@@ -31,10 +31,10 @@ strategy:
   hurst_threshold: 0.45
 
   alpha:
-    threshold_percentile: 80
+    threshold_percentile: 70
     tp_vol_mult: 6.0
     sl_vol_mult: 3.0
-    min_edge_pips: 0.00020
+    min_edge_pips: 0.00015
     min_combined_score: 1.80 
 
   # Mean Reversion (Asian + MEAN_REVERT regime)

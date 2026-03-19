@@ -78,7 +78,7 @@ class MeanReversionStrategy(StrategyBase):
         self.adx_max      = mr["adx_max"]             # ADX must be below this
         self.sl_mult      = mr["sl_atr_mult"]         # SL = ATR * this
         self.trail_mult   = mr["trail_atr_mult"]
-        self.min_rr       = mr.get("min_rr", 1.3)      # trailing = ATR * this
+        self.min_rr       = mr.get("min_rr", 1.3)      
 
         logger.info(
             f"MeanReversionStrategy ready | "
@@ -139,8 +139,9 @@ class MeanReversionStrategy(StrategyBase):
             return None
 
         # ── Guard: regime must be mean-reverting (or warm-up None) ────────────
-        if regime is not None and regime != REGIME_MEAN_REVERT:
-            return None
+        if session != SESSION_ASIAN:
+            if regime is not None and regime != REGIME_MEAN_REVERT:
+                return None
 
         prev = df.iloc[-2]   # Always use the confirmed closed candle
 
