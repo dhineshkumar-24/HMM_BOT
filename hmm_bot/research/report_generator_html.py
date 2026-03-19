@@ -65,6 +65,8 @@ def generate_html_report(
     win_rate_val = float(metrics.get("win_rate", 0)) * 100
     pf_val       = float(metrics.get("profit_factor", 0))
     dd_val       = float(metrics.get("max_drawdown", 0)) * 100
+    wins         = int(metrics.get("win_count",  0))
+    losses       = int(metrics.get("loss_count", 0))
 
     checks = {
         "min_trades":    (total_trades,  ">=", 30,   f"requires >= 30 · got {total_trades}"),
@@ -110,8 +112,8 @@ def generate_html_report(
 
     timeframe   = "M5"
     run_time    = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    wins        = int(metrics.get("wins",   0))
-    losses      = int(metrics.get("losses", 0))
+    wins        = int(metrics.get("win_count",  0))
+    losses      = int(metrics.get("loss_count", 0))
 
     eq_json     = json.dumps([round(v, 2) for v in eq_sampled])
     labels_json = json.dumps(labels)
@@ -267,8 +269,8 @@ def generate_html_report(
   </div>
   <div class="panel">
     <div class="block-title">Risk metrics</div>
-    <div class="stat-row"><span class="sk">Sharpe ratio</span><span class="sv sv-bad">{float(metrics.get('sharpe_ratio',0)):.3f}</span></div>
-    <div class="stat-row"><span class="sk">Sortino ratio</span><span class="sv sv-bad">{float(metrics.get('sortino_ratio',0)):.3f}</span></div>
+    <div class="stat-row"><span class="sk">Sharpe ratio</span><span class="sv sv-bad">{float(metrics.get('sharpe',0)):.3f}</span></div>
+    <div class="stat-row"><span class="sv sv-bad">{float(metrics.get('sortino',0)):.3f}</span></div>
     <div class="stat-row"><span class="sk">Max drawdown</span><span class="sv sv-bad">{dd_val:.2f}%</span></div>
     <div class="stat-row"><span class="sk">Total trades</span><span class="sv">{total_trades}</span></div>
     <div class="stat-row"><span class="sk">Wins / Losses</span><span class="sv">{wins} / {losses}</span></div>

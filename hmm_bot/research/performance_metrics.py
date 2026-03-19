@@ -88,6 +88,17 @@ def compute_metrics(
     equity_curve = np.cumsum(profits)
     max_dd = _max_drawdown(equity_curve, initial_balance=initial_balance)
 
+    # Convention: CVaR returned as a positive number representing loss magnitude.
+    # A CVaR of 85.0 means: on the worst 5% of trades, the average loss is $85.
+    alpha_level  = 0.05
+    sorted_pnl   = np.sort(profits)   # ascending: worst losses first
+    cutoff_idx   = max(1, int(np.floor(n * alpha_level)))
+    tail_losses  = sorted_pnl[:cutoff_idx]
+    cvar_95      = float(-tail_losses.mean()) if len(tail_losses) > 0 else 0.0
+
+    # VaR at 95%: the loss threshold (worst 5th percentile trade)
+    var_95 = float(-np.percentile(profits, 5))
+
     return {
         "total_trades":   total_trades,
         "win_count":      win_count,
@@ -103,9 +114,10 @@ def compute_metrics(
         "max_drawdown":   max_dd,
         "sharpe":         sharpe,
         "sortino":        sortino,
+        "var_95":         var_95,
+        "cvar_95":        cvar_95,
         "equity_curve":   equity_curve.tolist(),
     }
-
 
 def validate_strategy(metrics: dict) -> dict:
     """
@@ -153,6 +165,8 @@ def print_metrics(metrics: dict, label: str = "BACKTEST RESULTS") -> None:
     print(f"  Max Drawdown    : {dd:.2%}")
     print(f"  Sharpe Ratio    : {metrics.get('sharpe', 0):.3f}")
     print(f"  Sortino Ratio   : {metrics.get('sortino', 0):.3f}")
+    print(f"  VaR 95%         : {metrics.get('var_95', 0):+.2f}")
+    print(f"  CVaR 95%        : {metrics.get('cvar_95', 0):+.2f}")
     print("=" * 52)
 
     if "rules" in metrics:
@@ -189,5 +203,6 @@ def _empty_metrics() -> dict:
         "gross_loss": 0.0, "avg_win": 0.0, "avg_loss": 0.0,
         "profit_factor": 0.0, "expectancy": 0.0,
         "max_drawdown": 0.0, "sharpe": 0.0, "sortino": 0.0,
+        "var_95": 0.0, "cvar_95": 0.0,
         "equity_curve": [],
     }

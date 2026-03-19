@@ -41,13 +41,14 @@ strategy:
   mean_reversion:
     z_score_trigger: 2.0         # |Z| >= this to consider entry
     z_score_exit: 0.0            # Z returns here → TP = rolling mean
-    rsi_overbought: 72           # RSI must exceed this for SELL
-    rsi_oversold: 28             # RSI must be below this for BUY
-    ema_slope_flat: 0.00005      # |EMA50 slope| must be <= this (flat)
+    rsi_overbought: 60           # RSI must exceed this for SELL
+    rsi_oversold: 40             # RSI must be below this for BUY
+    ema_slope_flat: 0.25      # |EMA50 slope| must be <= this (flat)
     adx_max: 18                  # ADX must be < this (no strong trend)
     sl_atr_mult: 2.0             # SL = ATR * sl_atr_mult
     trail_atr_mult: 1.5          # Trailing stop = ATR * trail_atr_mult
     min_rr: 1.3
+    tp_atr_floor_mult: 3.0
 
   # Momentum (London/NY + TRENDING regime)
   momentum:
@@ -63,13 +64,11 @@ strategy:
 # ── Session Windows (broker candle time) ─────────────────────────────────────
 sessions:
   asian_start: "02:00"
-  asian_end: "09:00"
+  asian_end:   "09:00"
   london_start: "09:00"
-  london_end: "12:00"
-  london_mid_start: "13:00"      # Kept for legacy helper function
-  london_mid_end: "15:00"
-  newyork_start: "14:00"
-  newyork_end: "21:00"
+  london_end:   "14:00"          
+  newyork_start: "12:00"         
+  newyork_end:   "21:00"
 
 filters:
   max_spread_pips: 2.0
@@ -99,13 +98,13 @@ risk:
 # ── HMM Regime Detection ──────────────────────────────────────────────────────
 hmm:
   n_components: 3 # Number of regimes
-  n_iter: 150 # Number of iterations for training - Expectation-Maximization (EM
-  covariance_type: "full" # Type of covariance matrix
+  n_iter: 250 # Number of iterations for training - Expectation-Maximization (EM
+  covariance_type: "diag" # Type of covariance matrix
   confidence_threshold: 0.70 # Confidence threshold for regime detection
   regime_names:
     0: "mean_reverting"
     1: "trending"
     2: "high_volatility"
   model_path: "models/hmm.pkl"
-  feature_lookback: 6000 # Number of bars to look back for feature extraction
+  feature_lookback: 20000 # Number of bars to look back for feature extraction
   retrain_interval: 1500 # Number of bars to look back for feature extraction new candles

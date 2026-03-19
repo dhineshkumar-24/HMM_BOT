@@ -54,7 +54,7 @@ REGIME_NAMES: dict[int, str] = {
 
 CONFIDENCE_THRESHOLD: float = 0.70   # Minimum posterior probability to act
 N_STATES:             int   = 3
-N_TRAINING_BARS:      int   = 5000
+N_TRAINING_BARS:      int   = 20000
 N_PREDICTION_BARS:    int   = 200
 N_TRAINING_SEEDS:     int   = 3
 
@@ -113,7 +113,7 @@ class HMMRegimeDetector:
     def __init__(
         self,
         n_states:      int   = N_STATES,
-        n_iter:        int   = 150,
+        n_iter:        int   = 250,
         n_seeds:       int   = N_TRAINING_SEEDS,
         model_path:    str   = "models/hmm.pkl",
         n_train_bars:  int   = N_TRAINING_BARS,
@@ -186,7 +186,7 @@ class HMMRegimeDetector:
             try:
                 model = hmm_lib.GaussianHMM(
                     n_components=self.n_states,
-                    covariance_type="full",
+                    covariance_type="diag",
                     n_iter=self.n_iter,
                     tol=1e-4,
                     random_state=seed,
@@ -300,26 +300,35 @@ class HMMRegimeDetector:
 
     # ── Trade gate ────────────────────────────────────────────────────────────
 
-    def should_trade(self, regime: int, confidence: float) -> bool:
+    def should_trade(
+        self,
+        regime:     int,
+        confidence: float,
+        posteriors: np.ndarray = None,
+    ) -> bool:
         """
         Return False if the bot should skip trading this bar.
 
-        Conditions for SKIP:
+        Conditions for SKIP (applied in order):
             1. confidence < confidence_threshold
-            2. regime == REGIME_HIGH_VOL (2)
+            2. posterior entropy > 0.65 (model genuinely uncertain)
+            3. regime == REGIME_HIGH_VOL
 
-        Args:
-            regime:     Predicted regime label (0, 1, or 2).
-            confidence: Posterior probability of the predicted regime.
+        The entropy gate (condition 2) is the new addition.
+        It catches bars where the model has a plurality winner
+        but is still near-uniform across states — the symptom
+        of weak regime separation (gap = 0.070).
 
-        Returns:
-            bool — True = safe to trade, False = skip this bar.
+        Entropy interpretation for 3 states:
+            Max entropy = log(3) = 1.099  (perfectly uniform)
+            Normalised entropy = entropy / log(n_states)
+            0.0 = certain (one state = 1.0)
+            1.0 = uniform (all states = 0.333)
+            We skip when normalised entropy > 0.65
         """
         # Case 1: low confidence
         if confidence < self.confidence_thr:
             self._low_conf_skip_count += 1
-
-            # log only on state change, then every 100 skips
             if self._last_gate_reason != "low_confidence":
                 logger.info(
                     f"[Gate] Low confidence {confidence:.2%} < "
@@ -329,28 +338,42 @@ class HMMRegimeDetector:
                 logger.info(
                     f"[Gate] Low-confidence skips: {self._low_conf_skip_count}"
                 )
-
             self._last_gate_reason = "low_confidence"
             self._last_gate_regime = regime
             return False
 
-        # Case 2: high-volatility regime
+        # Case 2: posterior entropy gate
+        if posteriors is not None:
+            p            = np.array(posteriors) + 1e-9   # avoid log(0)
+            entropy      = float(-np.sum(p * np.log(p)))
+            max_entropy  = np.log(self.n_states)
+            norm_entropy = entropy / max_entropy
+
+            if norm_entropy > 0.65:
+                if self._last_gate_reason != "high_entropy":
+                    logger.info(
+                        f"[Gate] Posterior entropy {norm_entropy:.2f} > 0.65 "
+                        f"— model uncertain across states, skipping. "
+                        f"Posteriors: {[f'{p:.2f}' for p in posteriors]}"
+                    )
+                self._last_gate_reason = "high_entropy"
+                self._last_gate_regime = regime
+                return False
+
+        # Case 3: high-volatility regime
         if regime == REGIME_HIGH_VOL:
             self._high_vol_skip_count += 1
-
-            # log only on transition into high-vol regime, then every 100 skips
             if self._last_gate_reason != "high_volatility":
                 logger.info("[Gate] High-volatility regime detected — skipping.")
             elif self._high_vol_skip_count % 100 == 0:
                 logger.info(
                     f"[Gate] High-volatility skips: {self._high_vol_skip_count}"
                 )
-
             self._last_gate_reason = "high_volatility"
             self._last_gate_regime = regime
             return False
 
-        # Gate passed → reset gate state
+        # All gates passed
         self._last_gate_reason = "pass"
         self._last_gate_regime = regime
         return True
@@ -457,7 +480,7 @@ class HMMRegimeDetector:
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
-    def _log_model_summary(self) -> None:
+   def _log_model_summary(self) -> None:
         """Log the trained model's transition matrix and mean vectors."""
         if self._model is None:
             return
@@ -471,61 +494,108 @@ class HMMRegimeDetector:
             vals = "  ".join(f"{v:+.4f}" for v in mean_vec)
             logger.info(f"  State {i} means: [{vals}]")
         logger.info("──────────────────────────────────────")
+
     def _align_state_labels(self) -> dict:
         """
-        After training, map HMM integer states to economic regime labels
-        by examining the feature means of each learned state.
+        Map learned HMM states to economic regime labels.
 
-        Economic rules:
-            HIGH_VOL      → state with highest realized_vol (feature index 1)
-            TRENDING      → state with highest positive autocorr (feature index 3)
-            MEAN_REVERT   → remaining state
-
-        Returns:
-            dict mapping {learned_state_int: canonical_regime_int}
-            e.g. {0: 2, 1: 0, 2: 1}  means learned-0→high_vol, learned-1→mean_rev, learned-2→trend
+        Structure is strictly ordered to prevent NameError:
+            Step 1 — identify HIGH_VOL (requires only vol features)
+            Step 2 — define `remaining` immediately after Step 1
+            Step 3 — attempt enhanced feature lookup (ER/VR/Hurst/MLAC)
+            Step 4 — compute trending_scores using whatever is available
+            Step 5 — assign labels and log results
         """
         if self._model is None:
-            return {0: 0, 1: 1, 2: 2}  # identity if not trained
+            return {0: 0, 1: 1, 2: 2}
 
-        means = self._model.means_  # shape (n_states, n_features)
+        means = self._model.means_
 
-        # Feature indices from FEATURE_COLS:
-        # 0=log_return, 1=realized_vol, 2=vol_of_vol, 3=autocorr, 4=atr_norm
-        IDX_RVOL   = 1   # realized volatility
-        IDX_AUTOCR = 3   # autocorrelation (positive = trending)
-        IDX_ATR    = 4   # normalized ATR
-
-        rvol_per_state   = means[:, IDX_RVOL]
-        autocr_per_state = means[:, IDX_AUTOCR]
-        atr_per_state    = means[:, IDX_ATR]
-
-        # Use a combined vol score: realized_vol + atr_norm
-        combined_vol = rvol_per_state + atr_per_state
-
-        # HIGH_VOL = highest combined volatility score
-        high_vol_state = int(np.argmax(combined_vol))
-
-        # TRENDING = only if autocorrelation is genuinely POSITIVE
-        # If both remaining states have negative autocorr, neither is truly trending
-        remaining = [i for i in range(self.n_states) if i != high_vol_state]
-        autocr_remaining = [autocr_per_state[i] for i in remaining]
-        best_idx = int(np.argmax(autocr_remaining))
-        best_trending_state = remaining[best_idx]
-
-        if autocr_per_state[best_trending_state] > 0.02:
-            # Genuinely positive autocorr = trending market
-            trending_state = best_trending_state
-            mean_rev_state = [i for i in remaining if i != trending_state][0]
-        else:
-            # Both states are mean-reverting — assign by lower volatility
-            logger.warning(
-                "No state has positive autocorr — both remaining states "
-                "treated as MEAN_REVERT. Lower-vol state gets MR label."
+        # ── Step 1: Core vol features — required ──────────────────────────────
+        try:
+            IDX_RVOL = FEATURE_COLS.index("realized_vol")
+            IDX_VOV  = FEATURE_COLS.index("vol_of_vol")
+            IDX_ATR  = FEATURE_COLS.index("atr_norm")
+        except ValueError as exc:
+            logger.error(
+                f"Core volatility feature missing: {exc}. "
+                f"FEATURE_COLS = {FEATURE_COLS}. "
+                f"Cannot identify HIGH_VOL state — returning identity map."
             )
-            vol_remaining = [rvol_per_state[i] for i in remaining]
-            mean_rev_state = remaining[int(np.argmin(vol_remaining))]
-            trending_state = remaining[int(np.argmax(vol_remaining))]
+            return {0: 0, 1: 1, 2: 2}
+
+        # ── Step 2: HIGH_VOL state + remaining — always defined here ──────────
+        combined_vol   = means[:, IDX_RVOL] + means[:, IDX_ATR] + means[:, IDX_VOV]
+        high_vol_state = int(np.argmax(combined_vol))
+        remaining      = [i for i in range(self.n_states) if i != high_vol_state]
+
+        # ── Step 3: Feature availability check ───────────────────────────────
+        enhanced_available = False
+        legacy_available   = False
+
+        try:
+            IDX_ER    = FEATURE_COLS.index("efficiency_ratio")
+            IDX_VR    = FEATURE_COLS.index("variance_ratio")
+            IDX_HURST = FEATURE_COLS.index("hurst_rolling")
+            IDX_MLAC  = FEATURE_COLS.index("multi_lag_autocorr")
+            enhanced_available = True
+        except ValueError:
+            pass
+
+        if not enhanced_available:
+            try:
+                IDX_AUTOCR = FEATURE_COLS.index("autocorr")
+                IDX_MOM    = FEATURE_COLS.index("momentum")
+                legacy_available = True
+            except ValueError:
+                pass
+
+        # ── Step 4: Compute trending scores ───────────────────────────────────
+        if enhanced_available:
+            trending_scores = {
+                state: (
+                    means[state, IDX_ER]      * 0.40
+                    + means[state, IDX_VR]    * 0.35
+                    + means[state, IDX_HURST] * 0.15
+                    + means[state, IDX_MLAC]  * 0.10
+                )
+                for state in remaining
+            }
+            method = "enhanced (ER+VR+Hurst+MLAC)"
+
+        elif legacy_available:
+            trending_scores = {
+                state: (
+                    means[state, IDX_AUTOCR] * 0.7
+                    + means[state, IDX_MOM]  * 0.3
+                )
+                for state in remaining
+            }
+            method = "legacy (autocorr+momentum)"
+
+        else:
+            try:
+                IDX_DD = FEATURE_COLS.index("drawdown_pct")
+                trending_scores = {
+                    state: -means[state, IDX_DD]
+                    for state in remaining
+                }
+                method = "last-resort (drawdown proxy)"
+                logger.warning(
+                    "Neither enhanced nor legacy trend features found in "
+                    f"FEATURE_COLS = {FEATURE_COLS}. "
+                    "Using drawdown_pct as weak trending proxy."
+                )
+            except ValueError:
+                logger.error(
+                    "No usable trend features found. Returning identity map. "
+                    f"FEATURE_COLS = {FEATURE_COLS}"
+                )
+                return {0: 0, 1: 1, 2: 2}
+
+        # ── Step 5: Assign labels ──────────────────────────────────────────────
+        trending_state = max(trending_scores, key=trending_scores.get)
+        mean_rev_state = [s for s in remaining if s != trending_state][0]
 
         label_map = {
             mean_rev_state: REGIME_MEAN_REVERT,
@@ -533,10 +603,35 @@ class HMMRegimeDetector:
             high_vol_state: REGIME_HIGH_VOL,
         }
 
-        logger.info("── State Label Alignment ─────────────────")
-        logger.info(f"  Learned state {high_vol_state} → HIGH_VOL     (vol={combined_vol[high_vol_state]:+.4f})")
-        logger.info(f"  Learned state {trending_state} → TRENDING     (autocorr={autocr_per_state[trending_state]:+.4f})")
-        logger.info(f"  Learned state {mean_rev_state} → MEAN_REVERT  (autocorr={autocr_per_state[mean_rev_state]:+.4f})")
-        logger.info("──────────────────────────────────────────")
+        score_gap = abs(
+            trending_scores[trending_state] - trending_scores[mean_rev_state]
+        )
+        if score_gap < 0.10:
+            logger.warning(
+                f"Trending vs mean-revert alignment confidence is LOW "
+                f"(score gap = {score_gap:.4f}). "
+                f"Regime routing may be unreliable. "
+                f"Method used: {method}."
+            )
+
+        logger.info("── State Label Alignment (multi-feature) ──────────")
+        logger.info(
+            f"  Learned state {high_vol_state} → HIGH_VOL    "
+            f"| vol_score = {combined_vol[high_vol_state]:+.4f}"
+        )
+        logger.info(
+            f"  Learned state {trending_state} → TRENDING    "
+            f"| trend_score = {trending_scores[trending_state]:+.4f}"
+        )
+        logger.info(
+            f"  Learned state {mean_rev_state} → MEAN_REVERT "
+            f"| trend_score = {trending_scores[mean_rev_state]:+.4f}"
+        )
+        logger.info(
+            f"  Alignment confidence gap: {score_gap:.4f} "
+            f"({'GOOD' if score_gap >= 0.10 else 'WEAK — see warning above'}) "
+            f"| Method: {method}"
+        )
+        logger.info("───────────────────────────────────────────────────")
 
         return label_map

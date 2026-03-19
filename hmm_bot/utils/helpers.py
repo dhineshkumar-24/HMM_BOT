@@ -66,8 +66,14 @@ def detect_session(config: dict, candle_time: datetime.datetime) -> str:
     """
     Identify which trading session the candle belongs to.
 
-    Priority: Asian → London → New York → none.
-    Overlapping windows (London/NY overlap) → London takes priority.
+    Priority order: Asian → London → New York → none.
+
+    Overlap contract (12:00–14:00 broker time):
+        London and NY windows now intentionally overlap in this range.
+        Because London is checked first, all bars in 12:00–14:00 are
+        classified as SESSION_LONDON and routed to MomentumStrategy.
+        This is the correct behaviour — the London/NY overlap is the
+        highest-liquidity window of the day and should never be dead.
 
     Returns one of: SESSION_ASIAN, SESSION_LONDON, SESSION_NY, SESSION_NONE.
     """
@@ -79,22 +85,29 @@ def detect_session(config: dict, candle_time: datetime.datetime) -> str:
         return SESSION_NY
     return SESSION_NONE
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Combined session guard (backward-compatible)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def check_trading_session(config: dict, candle_time: datetime.datetime) -> bool:
     """
-    Return True if the candle is in any active trading session
+    Return True if the candle falls inside any active trading session
     and is not on a weekend.
 
-    Backward-compatible — used by main.py.
+    Used by main.py loop and backtester session filter.
+    Delegates entirely to detect_session() — single source of truth.
+
+    Active hours (broker time):
+        Asian  02:00–09:00
+        London 09:00–14:00
+        NY     12:00–21:00
+    Dead zones (intentional):
+        21:00–02:00 — Sunday open through early Asian
+        Weekend Sat/Sun — hard excluded below
     """
     if candle_time.weekday() >= 5:      # Sat=5, Sun=6
         return False
     return detect_session(config, candle_time) != SESSION_NONE
-
 
 def check_news_impact() -> bool:
     """

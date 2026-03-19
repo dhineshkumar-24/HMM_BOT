@@ -78,6 +78,7 @@ def run_backtest(
     commission:     float  = 6.0,
     verbose:        bool   = True,
     label:          str    = "Backtest",
+    df_warmup:       Optional[pd.DataFrame] = None,
 ) -> BacktestResult:
     """
     Run a full sequential backtest.
@@ -132,9 +133,10 @@ def run_backtest(
         regime_labels = _regimes
     else:
         regime_labels = [None] * total_bars
+
     # ── Pre-compute 4H bias once for all bars ─────────────────────────────────
-    print("[Backtester] Pre-computing 4H bias from 1M data...")
-    bias_series = _compute_4h_bias_series(df)
+    print("[Backtester] Pre-computing 4H bias (causal, with warmup)...")
+    bias_series = _compute_4h_bias_series(df, df_warmup=df_warmup)
 
     # ── Main loop ─────────────────────────────────────────────────────────────
     WIN_BAR = 60    # minimum bars before any signal
@@ -152,20 +154,59 @@ def run_backtest(
         for t in newly_closed:
             balance = max(0, balance + t.net_pnl)
             pending_pnl = 0.0
-        # ── Time stop — exit after 30 bars if trade still open ────────────────
-        if regime == 2:          # HIGH_VOL — TP farther, needs more time
+        # ── Context-aware time stop ───────────────────────────────────────────
+        # Base time limit by regime — how long price typically needs to revert
+        # or follow through before the thesis is invalidated.
+        if regime == 2:          # HIGH_VOL — wide TP, needs more time
             TIME_STOP_BARS = 22
-        elif regime == 1:        # TRENDING — moderate
+        elif regime == 1:        # TRENDING — momentum needs time to extend
             TIME_STOP_BARS = 16
-        else:                    # MEAN_REVERT or warmup
+        else:                    # MEAN_REVERT or warmup — fast reversion or out
             TIME_STOP_BARS = 12
+
         if sim.has_open_trade:
             open_trade = sim._open_trades[0]
             bars_open  = i - open_trade.entry_bar
+
+            # Only evaluate time stop once base limit is reached
             if bars_open >= TIME_STOP_BARS:
-                for t in sim.close_all(bar, i):
-                    balance = max(0, balance + t.net_pnl)
-                logger.debug(f"Time stop hit at bar {i} — {bars_open} bars open")
+                entry_px   = open_trade.entry_price
+                tp_px      = open_trade.tp
+                sl_px      = open_trade.sl
+                current_px = float(bar["close"])
+
+                tp_dist    = abs(tp_px - entry_px)
+                price_moved = (
+                    (current_px - entry_px)
+                    if open_trade.direction == "BUY"
+                    else (entry_px - current_px)
+                )
+
+                # Progress toward TP as a fraction (negative = moving away)
+                progress = (price_moved / tp_dist) if tp_dist > 0 else 0.0
+
+                # Flag to prevent repeated extensions on the same trade
+                already_extended = getattr(open_trade, "_time_extended", False)
+
+                if progress >= 0.60 and not already_extended:
+                    # Trade is 60%+ of the way to TP and still moving correctly.
+                    # Grant one single extension of 50% of base limit.
+                    # Extension is capped — prevents infinite hold in a market
+                    # that reverses slowly back to entry after appearing to work.
+                    open_trade._time_extended = True
+                    logger.debug(
+                        f"Time stop extended | bar={i} | progress={progress:.1%} "
+                        f"| extension={int(TIME_STOP_BARS * 0.5)} bars"
+                    )
+                else:
+                    # Trade is losing, stalled, or already had its extension.
+                    # Close now — thesis invalidated or capital better deployed.
+                    for t in sim.close_all(bar, i):
+                        balance = max(0, balance + t.net_pnl)
+                    logger.debug(
+                        f"Time stop closed | bar={i} | bars_open={bars_open} "
+                        f"| progress={progress:.1%} | extended={already_extended}"
+                    )
         # ── Move SL to breakeven once trade reaches 40% of TP distance ──────────
         if sim.has_open_trade:
             open_trade = sim._open_trades[0]
@@ -197,25 +238,26 @@ def run_backtest(
             continue
 
         # ── Session filter ────────────────────────────────────────────────────
+        # ── Session filter ────────────────────────────────────────────────────
         if not check_trading_session(config, candle_time):
             i += 1
             continue
 
-        # # ── HMM confidence gate (only for MeanReversionStrategy, not AlphaStrategy)
-        # use_hmm_gate = True
-        # if use_router:
-        #     # Check which strategy would be selected — skip gate for alpha strategy
-        #     session_now = detect_session(config, candle_time)
-        #     from strategy.momentum import MomentumStrategy as AlphaStrat
-        #     candidate = strategy._routing.get((session_now, regime))
-        #     if isinstance(candidate, AlphaStrat):
-        #         use_hmm_gate = False  # alpha filters itself via combined_alpha threshold
-
-        # if use_hmm_gate and hmm is not None and hmm.is_trained and regime is not None:
-        #     conf = _regime_confidence(hmm, df, i)
-        #     if not hmm.should_trade(regime, conf):
-        #         i += 1
-        #         continue
+        # ── HMM entropy + confidence gate ────────────────────────────────────
+        # Replaces the commented-out block above.
+        # Uses the pre-computed regime label and the full posterior array
+        # (already available from _batch_hmm_predict via regime_labels).
+        # The entropy gate rejects bars where the model is near-uniform
+        # across states — the primary symptom of weak gap (0.070).
+        if hmm is not None and hmm.is_trained and regime is not None:
+            # Retrieve the posterior array for this bar from score_samples.
+            # _regime_confidence() runs a small rolling window decode —
+            # cheap because it only touches 200 bars.
+            posteriors = _get_posteriors(hmm, df, i)
+            if not hmm.should_trade(regime, _regime_confidence(hmm, df, i),
+                                    posteriors=posteriors):
+                i += 1
+                continue
 
         # ── Generate signal ───────────────────────────────────────────────────
         window = df.iloc[: i + 1]
@@ -338,35 +380,66 @@ def trades_to_dataframe(trades: list[SimulatedTrade]) -> pd.DataFrame:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _batch_hmm_predict(
-    hmm: HMMRegimeDetector,
-    df:  pd.DataFrame,
+    hmm:    HMMRegimeDetector,
+    df:     pd.DataFrame,
     window: int = 200,
+    stride: int = 10,
 ) -> list[Optional[int]]:
-    """Predict regime for every bar using a rolling window (vectorised)."""
+    """
+    Causal regime prediction — no look-ahead bias.
+
+    For each bar i, only observations [i-window+1 .. i] are passed to the
+    HMM. The regime is taken from the LAST posterior in score_samples().
+
+    Why the last posterior is causal:
+        forward-backward posterior at position t = alpha_t * beta_t.
+        At the final step T, beta_T is all-ones (no future observations),
+        so posterior[T] = alpha_T / sum(alpha_T) — the pure forward
+        (filtering) probability. No future data is used.
+
+    stride=10: regime is recomputed every 10 bars and held constant
+    between updates. On M5 this means a regime update every 50 minutes —
+    acceptable for session-level strategy routing.
+    """
     regimes = [None] * len(df)
-    from utils.features import build_feature_matrix, FEATURE_COLS
-    from sklearn.preprocessing import StandardScaler
+
+    from utils.features import build_feature_matrix
 
     feats = build_feature_matrix(df)
     if len(feats) < window:
         return regimes
 
-    # Align feature index with df index
-    feat_idx = feats.index.tolist()
-    idx_map  = {v: i for i, v in enumerate(df.index)}
+    feat_positions = list(feats.index)
+    df_index_map   = {v: i for i, v in enumerate(df.index)}
 
-    X_all   = feats.values
+    X_all    = feats.values
     X_scaled = hmm._scaler.transform(X_all)
+    n        = len(X_scaled)
 
-    try:
-        _, state_seq = hmm._model.decode(X_scaled, algorithm="viterbi")
-        for i, df_ix in enumerate(feat_idx):
-            if df_ix in idx_map:
-                raw_state      = int(state_seq[i])
-                canonical_state = hmm._label_map.get(raw_state, raw_state)  # ← apply label map
-                regimes[idx_map[df_ix]] = canonical_state
-    except Exception:
-        pass
+    last_canonical = None   # carry forward between strides
+
+    for feat_i in range(window - 1, n, stride):
+        start    = max(0, feat_i - window + 1)
+        X_window = X_scaled[start : feat_i + 1]
+
+        try:
+            # score_samples = forward-backward; last row is causal
+            _, posteriors   = hmm._model.score_samples(X_window)
+            last_posterior  = posteriors[-1]                   # shape (n_states,)
+            raw_state       = int(np.argmax(last_posterior))
+            last_canonical  = hmm._label_map.get(raw_state, raw_state)
+        except Exception:
+            pass   # keep last_canonical from previous stride
+
+        # Fill every bar in this stride block with the same regime
+        block_end   = min(feat_i + stride, n)
+        block_start = feat_i - stride + 1 if stride > 1 else feat_i
+
+        for fi in range(block_start, block_end):
+            if fi < len(feat_positions):
+                df_ix = feat_positions[fi]
+                if df_ix in df_index_map:
+                    regimes[df_index_map[df_ix]] = last_canonical
 
     return regimes
 
@@ -383,6 +456,27 @@ def _regime_confidence(
         return conf
     except Exception:
         return 1.0
+
+
+def _get_posteriors(
+    hmm:    HMMRegimeDetector,
+    df:     pd.DataFrame,
+    i:      int,
+    window: int = 200,
+) -> np.ndarray:
+    """
+    Return the posterior probability array for bar i.
+
+    Uses the last 200 bars (same window as _regime_confidence) so
+    both functions share the same rolling window cost.
+    Returns uniform distribution on failure — entropy gate will
+    then block the trade, which is the safe default.
+    """
+    try:
+        _, _, posteriors = hmm.predict(df.iloc[max(0, i - window): i + 1])
+        return posteriors
+    except Exception:
+        return np.ones(hmm.n_states) / hmm.n_states   # uniform = max entropy
 
 
 def run_walk_forward_backtest(
@@ -416,18 +510,66 @@ def run_walk_forward_backtest(
         
     return results
 
-def _compute_4h_bias_series(df_1m: pd.DataFrame) -> pd.Series:
+def _compute_4h_bias_series(
+    df_signal: pd.DataFrame,
+    df_warmup: Optional[pd.DataFrame] = None,
+) -> pd.Series:
     """
-    Resample 1M OHLCV to 4H and compute EMA50 > EMA200 bias.
-    Returns a Series indexed by 1M bar index with values 'UP', 'DOWN', 'NEUTRAL'.
+    Compute causal 4H EMA50/EMA200 bias for every bar in df_signal.
+
+    Two structural fixes vs the original:
+
+    Fix 1 — resample label:
+        Default label='left' labels the 4H period [09:00-13:00) as "09:00"
+        but its value is the close at 12:55. Forward-filling gives M5 bars
+        at 09:05 a value computed from data up to 12:55 — up to 4 hours
+        of embedded lookahead.
+        label='right' labels the same period "13:00". Forward-fill only
+        applies this value to M5 bars from 13:00 onward — genuinely causal.
+
+    Fix 2 — EMA warmup:
+        EMA200 requires 200 four-hour bars (~33 trading days) to converge.
+        Without prepending warmup history, the first month of any test
+        period has a cold-start miscalibrated 4H bias.
+        df_warmup (= df_train) is prepended before EMA computation then
+        sliced away — only test-period bias values are returned.
     """
-    df = df_1m.copy().set_index("time")
-    df_4h = df["close"].resample("4h").last().dropna()
+    # Prepend warmup data for EMA convergence if provided
+    if df_warmup is not None and len(df_warmup) > 0:
+        full_df = pd.concat(
+            [df_warmup, df_signal],
+            ignore_index=True
+        ).sort_values("time").reset_index(drop=True)
+    else:
+        full_df = df_signal.copy()
+
+    # Build 4H series on full history (warmup + signal)
+    ts_full = full_df.set_index("time")
+
+    # label='right'  → period [09:00–13:00) labeled 13:00 → causal ffill
+    # closed='right' → period boundary at right edge (consistent with label)
+    df_4h = (
+        ts_full["close"]
+        .resample("4h", label="right", closed="right")
+        .last()
+        .dropna()
+    )
+
+    # EMA computed on full history — causal (recursive, left-to-right)
     ema50  = df_4h.ewm(span=50,  adjust=False).mean()
     ema200 = df_4h.ewm(span=200, adjust=False).mean()
-    bias_4h_ts = pd.Series("NEUTRAL", index=df_4h.index)
+
+    bias_4h_ts = pd.Series("NEUTRAL", index=df_4h.index, dtype=object)
     bias_4h_ts[ema50 > ema200] = "UP"
     bias_4h_ts[ema50 < ema200] = "DOWN"
-    bias_1m = bias_4h_ts.reindex(df.index, method="ffill").fillna("NEUTRAL")
-    bias_1m.index = df_1m.index
+
+    # Reindex to M5 frequency — ffill carries last known 4H bias forward
+    # Only return bias for the signal bars, not the warmup bars
+    signal_ts = df_signal.set_index("time")
+    bias_1m   = (
+        bias_4h_ts
+        .reindex(signal_ts.index, method="ffill")
+        .fillna("NEUTRAL")
+    )
+    bias_1m.index = df_signal.index
     return bias_1m

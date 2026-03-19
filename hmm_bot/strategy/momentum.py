@@ -90,31 +90,58 @@ class MomentumStrategy(StrategyBase):
         mode = "mean_rev"
 
         if regime == REGIME_MEAN_REVERT or regime is None:
-            # In mean-reverting regime: fade Z-score extremes
-            # Only when 60-min momentum is NOT strongly opposing
+            # Mean-reverting regime: fade Z-score extremes vs VWAP.
+            #
+            # alpha_mr = -z_vwap. Interpretation:
+            #   alpha_mr > 0 → price BELOW VWAP → fading exhaustion → BUY
+            #   alpha_mr < 0 → price ABOVE VWAP → fading exhaustion → SELL
+            #
+            # Two conviction tiers in a single block — no overwrite risk:
+            #   Standard (|alpha_mr| >= mr_threshold): entry with base strength.
+            #   High conviction (|alpha_mr| >= 3.0): entry with boosted strength.
+            #     High conviction requires stronger opposing-momentum filter
+            #     because a large Z-score during an actual trend is a trap.
+            #
+            # Momentum guard logic (alpha_mom):
+            #   alpha_mom is volatility-normalised 60-bar return.
+            #   For standard entries: block if momentum strongly opposes
+            #     direction (threshold ±2.0 — meaningful opposition only).
+            #   For high conviction: tighter filter (±1.5) because at
+            #     alpha_mr > 3.0 we are already far from VWAP — if momentum
+            #     is also running against us this is a trend, not a mean-rev.
             mode = "mean_rev"
 
-            # if session == "newyork":  
-            #     return None
-
+            # NY session uses a tighter entry threshold — NY bars have
+            # higher realised vol and wider spreads, requiring a larger
+            # Z-score dislocation before the edge covers transaction costs.
             mr_threshold = 2.5 if session == "newyork" else 1.5
 
-            if alpha_mr > mr_threshold and alpha_mom > -3.0:
-                direction = "BUY"
+            # ── Single tiered direction assignment ────────────────────────────
+            direction       = None
+            signal_strength = 0.0
+
+            if alpha_mr >= 3.0 and alpha_mom > -1.5:
+                # High conviction BUY: price very far below VWAP,
+                # momentum not strongly bearish.
+                direction       = "BUY"
+                signal_strength = min(alpha_mr * 1.2, 5.0)   # boosted
+
+            elif alpha_mr <= -3.0 and alpha_mom < 1.5:
+                # High conviction SELL: price very far above VWAP,
+                # momentum not strongly bullish.
+                direction       = "SELL"
+                signal_strength = min(abs(alpha_mr) * 1.2, 5.0)   # boosted
+
+            elif alpha_mr >= mr_threshold and alpha_mom > -2.0:
+                # Standard BUY: price moderately below VWAP,
+                # momentum not strongly opposing.
+                direction       = "BUY"
                 signal_strength = min(alpha_mr, 5.0)
 
-            elif alpha_mr < -mr_threshold and alpha_mom < 3.0:
-                direction = "SELL"
-                signal_strength = min(abs(alpha_mr), 5.0)
-
-            if alpha_mr > 3.0 and alpha_mom > -2.5:
-                # Price extended DOWN (z_vwap <-2), not in downtrend → BUY
-                direction = "BUY"
-                signal_strength = min(alpha_mr, 5.0)
-
-            elif alpha_mr < -3.0 and alpha_mom < 2.5:  
-                # Price extended UP (z_vwap > +2), not in uptrend → SELL
-                direction = "SELL"
+            elif alpha_mr <= -mr_threshold and alpha_mom < 2.0:
+                # Standard SELL: price moderately above VWAP,
+                # momentum not strongly opposing.
+                direction       = "SELL"
                 signal_strength = min(abs(alpha_mr), 5.0)
 
         elif regime == REGIME_TRENDING:
@@ -237,3 +264,9 @@ class MomentumStrategy(StrategyBase):
             "trail_sl":  round(sl_dist * 0.8, 6),
             "reason":    reason,
         }
+
+# Alias — both names import and instantiate identically.
+# MomentumStrategy kept for all existing imports and trade CSV output.
+# AlphaStrategy available for any new code going forward.
+# When codebase is stable, do a single search-replace to complete the rename.
+AlphaStrategy = MomentumStrategy

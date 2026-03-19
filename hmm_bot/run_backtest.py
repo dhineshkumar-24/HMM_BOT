@@ -205,9 +205,9 @@ def main():
     if not args.no_hmm:
         hmm = HMMRegimeDetector(
             n_states       = CONFIG.get("hmm", {}).get("n_components", 3),
-            n_iter         = CONFIG.get("hmm", {}).get("n_iter", 100),
+            n_iter         = CONFIG.get("hmm", {}).get("n_iter", 250),
             n_seeds        = 3,
-            confidence_thr = CONFIG.get("hmm", {}).get("confidence_threshold", 0.62),
+            confidence_thr = CONFIG.get("hmm", {}).get("confidence_threshold", 0.70),
             model_path     = CONFIG.get("hmm", {}).get("model_path", "models/hmm.pkl"),
         )
         if args.load_hmm:
@@ -246,24 +246,16 @@ def _run_single_backtest(df, CONFIG, hmm, args, symbol):
     print(f"\nDate range : {df['time'].iloc[0].date()} → {df['time'].iloc[-1].date()}")
     print(f"Train/Test : {split_frac:.0%} / {1-split_frac:.0%}")
 
-    # Train HMM on training portion — resample M5 train data to H1
-    # Never fetch live MT5 data here — that would cause future data leakage
+    # Train HMM directly on M5 training data — same timeframe as prediction.
+    # Resampling to H1 with fake OHLCV (high=low=close) sets ATR=0 and
+    # volume=1 for every bar, making the StandardScaler useless for real M5 data.
+    # Training on M5 ensures the scaler is fitted on the same feature
+    # distribution it will see during prediction.
     if hmm is not None and not hmm.is_trained and args.train_hmm:
-        print("Training HMM on training set (resampled to H1)...")
-        df_train_h1 = (
-            df_train.set_index("time")["close"]
-            .resample("1h")
-            .last()
-            .dropna()
-            .reset_index()
-        )
-        df_train_h1["open"]        = df_train_h1["close"]
-        df_train_h1["high"]        = df_train_h1["close"]
-        df_train_h1["low"]         = df_train_h1["close"]
-        df_train_h1["tick_volume"] = 1
-        hmm.fit(df_train_h1)
+        print(f"Training HMM on {len(df_train):,} M5 bars from train set only...")
+        hmm.fit(df_train)
         hmm.save()
-        print(f"HMM trained on {len(df_train_h1):,} H1 bars from train set only.")
+        print("HMM trained and saved.")
 
     router = StrategyRouter(CONFIG)
     result = run_backtest(
@@ -277,6 +269,7 @@ def _run_single_backtest(df, CONFIG, hmm, args, symbol):
         commission      = args.commission,
         verbose         = True,
         label           = f"{symbol}_backtest",
+        df_warmup       = df_train,
     )
 
     generate_report(

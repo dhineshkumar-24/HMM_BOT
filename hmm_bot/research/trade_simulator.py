@@ -287,20 +287,60 @@ class TradeSimulator:
         exit_reason: str,
         bar_idx:     int,
     ) -> None:
-        """Fill in all cost fields and mark the trade closed."""
+        """
+        Fill in all cost fields and mark the trade closed.
+
+        Exit slippage model:
+            SL exits (fast, adversarial market): full max slippage applied.
+                Price gapped against us — realistic assumption for SL fills
+                in volatile EURUSD, especially during NY session.
+            TP exits (limit order, passive): half max slippage.
+                Limit orders fill at the target price or better; occasional
+                partial slippage on liquidity-thin conditions.
+            EOD exits (market close at last bar): half slippage.
+                Neutral — no specific adversarial pressure.
+            TRAIL exits: half slippage (similar to EOD).
+
+        This matters most for strategies with high SL rates (like mean-rev
+        at ~74% SL rate) where exit costs are the dominant P&L drag.
+        """
         direction = 1 if trade.direction == "BUY" else -1
 
-        raw_pips   = direction * (exit_price - trade.entry_price) / self.pip_size
-        gross_pnl  = raw_pips * self.pip_value * trade.lots
+        # ── Exit slippage — direction always worsens the fill ─────────────────
+        if exit_reason == "SL":
+            # SL hit: market moved hard against us — full slippage
+            exit_slip_pips = self.slippage_pips
+        elif exit_reason == "TP":
+            # TP hit: limit order — partial slippage only
+            exit_slip_pips = self.slippage_pips * 0.5
+        else:
+            # EOD or TRAIL: market order at neutral conditions
+            exit_slip_pips = self.slippage_pips * 0.5
+
+        exit_slip_price = exit_slip_pips * self.pip_size
+
+        # Slippage always worsens exit:
+        #   BUY position exits SELL — slippage pushes bid lower → worse fill
+        #   SELL position exits BUY — slippage pushes ask higher → worse fill
+        if trade.direction == "BUY":
+            actual_exit = exit_price - exit_slip_price
+        else:
+            actual_exit = exit_price + exit_slip_price
+
+        # ── P&L calculation using slip-adjusted prices ─────────────────────
+        raw_pips    = direction * (actual_exit - trade.entry_price) / self.pip_size
+        gross_pnl   = raw_pips * self.pip_value * trade.lots
         spread_cost = self.spread_pips * self.pip_value * trade.lots
+        slip_cost   = (self.slippage_pips + exit_slip_pips) * self.pip_value * trade.lots
         commission  = self.commission * trade.lots
-        net_pnl = gross_pnl - commission
+        net_pnl     = gross_pnl - commission
 
         trade.exit_bar    = bar_idx
-        trade.exit_price  = exit_price
+        trade.exit_price  = actual_exit
         trade.gross_pnl   = gross_pnl
         trade.net_pnl     = net_pnl
         trade.spread_cost = spread_cost
+        trade.slip_cost   = slip_cost
         trade.commission  = commission
         trade.exit_reason = exit_reason
         trade.is_closed   = True

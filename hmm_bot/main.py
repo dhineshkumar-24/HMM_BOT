@@ -97,7 +97,7 @@ def main() -> None:
     )
 
     # ── 2. Module Initialisation ───────────────────────────────────────────────
-    data_feed     = DataFeed(SYMBOL, timeframe=TIMEFRAME, bars=600)
+    data_feed     = DataFeed(SYMBOL, timeframe=TIMEFRAME, bars=1200)
     executor      = Executor(magic=MAGIC)
     router        = StrategyRouter(CONFIG)
     trade_mgr     = TradeManager(magic=MAGIC)
@@ -105,10 +105,10 @@ def main() -> None:
 
     hmm = HMMRegimeDetector(
         n_states      = CONFIG.get("hmm", {}).get("n_components",         3),
-        n_iter        = CONFIG.get("hmm", {}).get("n_iter",             100),
+        n_iter        = CONFIG.get("hmm", {}).get("n_iter",             250),
         n_seeds       = 3,
         model_path    = CONFIG.get("hmm", {}).get("model_path",  "models/hmm.pkl"),
-        confidence_thr= CONFIG.get("hmm", {}).get("confidence_threshold", 0.60),
+        confidence_thr= CONFIG.get("hmm", {}).get("confidence_threshold", 0.70),
     )
 
     dd_monitor    = DrawdownMonitor(CONFIG, initial_capital=initial_capital)
@@ -176,9 +176,14 @@ def main() -> None:
                 )
 
             # ── Fetch OHLCV data ───────────────────────────────────────────────
-            df = data_feed.get_candles(n=600)
-            if df is None or len(df) < 150:
-                logger.warning("Insufficient data. Waiting...")
+            df = data_feed.get_candles(n=1200)
+            if df is None or len(df) < 500:
+                # 500 minimum: 200 Hurst warmup + 200 HMM predict window
+                # + 100 safety buffer for other feature warmups.
+                logger.warning(
+                    f"Insufficient data ({len(df) if df is not None else 0} bars). "
+                    f"Need 500+. Waiting..."
+                )
                 time.sleep(5)
                 continue
 
@@ -217,10 +222,30 @@ def main() -> None:
                     regime = None
 
             # ── Periodic HMM retraining ───────────────────────────────────────
+            # if candle_counter % retrain_interval == 0 and candle_counter > 0:
+            #     logger.info(f"Scheduled HMM retrain at candle {candle_counter}...")
+            #     hmm.fit(df)
+            #     hmm.save()
+            # ── Periodic HMM retraining ───────────────────────────────────────
+            # Fetch a dedicated training buffer — must be large enough for
+            # n_train_bars (20000). The live df buffer (1200 bars) is too
+            # small and would silently train on insufficient data.
             if candle_counter % retrain_interval == 0 and candle_counter > 0:
                 logger.info(f"Scheduled HMM retrain at candle {candle_counter}...")
-                hmm.fit(df)
-                hmm.save()
+                try:
+                    n_train = CONFIG.get("hmm", {}).get("feature_lookback", 20000)
+                    df_train = data_feed.get_candles(n=n_train + 500)  # +500 for NaN warmup
+                    if df_train is not None and len(df_train) >= 5000:
+                        hmm.fit(df_train)
+                        hmm.save()
+                        logger.info(f"HMM retrained on {len(df_train)} bars.")
+                    else:
+                        logger.warning(
+                            f"Retrain skipped — only {len(df_train) if df_train is not None else 0} "
+                            f"bars available, need at least 5000."
+                        )
+                except Exception as e:
+                    logger.error(f"HMM retrain failed: {e} — keeping existing model.")
 
             # ═══════════════════════════════════════════════════════════════════
             # RISK GATE 1 — Drawdown checks
@@ -278,10 +303,10 @@ def main() -> None:
                 continue
 
             # ═══════════════════════════════════════════════════════════════════
-            # RISK GATE 5 — HMM confidence + stability gates
+            # RISK GATE 5 — HMM confidence + entropy + stability gates
             # ═══════════════════════════════════════════════════════════════════
             if hmm.is_trained and regime is not None:
-                if not hmm.should_trade(regime, confidence):
+                if not hmm.should_trade(regime, confidence, posteriors=regime_probs):
                     time.sleep(1)
                     continue
                 if not hmm.is_regime_stable(window=5):
@@ -308,13 +333,14 @@ def main() -> None:
             )
 
             prev = df.iloc[-2]
+            _z   = prev["z_score"] if "z_score" in prev.index else float("nan")
+            _adx = prev["adx"]     if "adx"     in prev.index else float("nan")
+            _rsi = prev["rsi"]     if "rsi"     in prev.index else float("nan")
             logger.info(
                 f"Candle {candle_time} | "
                 f"Regime:{hmm.regime_name(regime) if regime is not None else 'warm-up'} | "
                 f"Session:{session} | Signal:{signal['direction'] if signal else 'NONE'} | "
-                f"Z:{prev.get('z_score', float('nan')):.2f} | "
-                f"ADX:{prev.get('adx', float('nan')):.1f} | "
-                f"RSI:{prev.get('rsi', float('nan')):.1f}"
+                f"Z:{_z:.2f} | ADX:{_adx:.1f} | RSI:{_rsi:.1f}"
             )
 
             # ── Order execution ────────────────────────────────────────────────

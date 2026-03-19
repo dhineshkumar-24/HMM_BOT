@@ -78,8 +78,8 @@ class StrategyRouter:
         self._routing: dict[tuple, object] = {
             # Asian session
             (SESSION_ASIAN,  REGIME_MEAN_REVERT): self._mean_rev,
-            (SESSION_ASIAN,  REGIME_TRENDING):    self._mean_rev,
-            (SESSION_ASIAN,  REGIME_HIGH_VOL):    self._mean_rev,
+            (SESSION_ASIAN,  REGIME_TRENDING):    self._momentum,
+            (SESSION_ASIAN,  REGIME_HIGH_VOL):    self._momentum,
             (SESSION_ASIAN,  None):               self._mean_rev,
             
 

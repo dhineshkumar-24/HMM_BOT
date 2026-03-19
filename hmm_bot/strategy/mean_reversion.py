@@ -78,7 +78,8 @@ class MeanReversionStrategy(StrategyBase):
         self.adx_max      = mr["adx_max"]             # ADX must be below this
         self.sl_mult      = mr["sl_atr_mult"]         # SL = ATR * this
         self.trail_mult   = mr["trail_atr_mult"]
-        self.min_rr       = mr.get("min_rr", 1.3)      
+        self.min_rr       = mr.get("min_rr", 1.3)
+        self.tp_atr_floor_mult = mr.get("tp_atr_floor_mult", 3.0)      
 
         logger.info(
             f"MeanReversionStrategy ready | "
@@ -107,8 +108,9 @@ class MeanReversionStrategy(StrategyBase):
         df["rsi"]     = compute_rsi(df["close"], period=self.rsi_period)
 
         # EMA50 slope
-        df["ema50"]         = compute_ema(df["close"], period=50)
-        df["ema50_slope"]   = compute_ema_slope(df["close"], ema_period=50, slope_window=5)
+        df["ema50"]       = compute_ema(df["close"], period=50)
+        raw_slope         = compute_ema_slope(df["close"], ema_period=50, slope_window=5)
+        df["ema50_slope"] = raw_slope / df["atr"].replace(0, np.nan)
 
         # ADX
         adx_df        = compute_adx(df, period=self.adx_period)
@@ -137,11 +139,6 @@ class MeanReversionStrategy(StrategyBase):
         # ── Guard: session must be Asian ───────────────────────────────────────
         if session is not None and session != SESSION_ASIAN:
             return None
-
-        # ── Guard: regime must be mean-reverting (or warm-up None) ────────────
-        if session != SESSION_ASIAN:
-            if regime is not None and regime != REGIME_MEAN_REVERT:
-                return None
 
         prev = df.iloc[-2]   # Always use the confirmed closed candle
 
@@ -172,26 +169,51 @@ class MeanReversionStrategy(StrategyBase):
             logger.debug(f"MR filter: ADX {adx:.1f} >= {self.adx_max} → skip")
             return None
 
-        # ── Filter 3 + 4: Z-score extreme + RSI confirmation ──────────────────
+        # ── Filter 3: Z-score extreme — primary entry trigger ─────────────────
+        # Z-score is the clean mean-reversion signal. RSI is repurposed below
+        # as a trend-state filter (not an extremity filter) — avoiding the
+        # logical contradiction where RSI extreme implies directional move
+        # which conflicts with the flat EMA slope requirement.
         direction = None
         reason    = ""
 
-        if z >= self.z_trigger and rsi > self.rsi_ob:
+        if z >= self.z_trigger:
             direction = "SELL"
-            reason    = (
-                f"Z={z:.2f}>={self.z_trigger} | RSI={rsi:.1f}>{self.rsi_ob} | "
-                f"ADX={adx:.1f} | slope={slope:.6f}"
-            )
-
-        elif z <= -self.z_trigger and rsi < self.rsi_os:
+        elif z <= -self.z_trigger:
             direction = "BUY"
-            reason    = (
-                f"Z={z:.2f}<=-{self.z_trigger} | RSI={rsi:.1f}<{self.rsi_os} | "
-                f"ADX={adx:.1f} | slope={slope:.6f}"
-            )
 
         if direction is None:
             return None
+
+        # ── Filter 4: RSI trend-state confirmation ────────────────────────────
+        # RSI is used here as a trend-direction filter only.
+        # For SELL: RSI must be above midpoint — price in upper half of range.
+        # For BUY:  RSI must be below midpoint — price in lower half of range.
+        # Thresholds of 55/45 are intentionally mild: we need trend-state
+        # agreement, not an extreme reading (that would recreate the
+        # contradiction with the flat-slope filter).
+        if direction == "SELL" and rsi < self.rsi_ob:
+            # RSI below overbought — price already fading, no overextension
+            # to sell into. Skip.
+            logger.debug(
+                f"MR filter: SELL skipped — RSI {rsi:.1f} < {self.rsi_ob} "
+                f"(no overbought state to fade)"
+            )
+            return None
+
+        if direction == "BUY" and rsi > self.rsi_os:
+            # RSI above oversold — price already recovering, no overextension
+            # to buy into. Skip.
+            logger.debug(
+                f"MR filter: BUY skipped — RSI {rsi:.1f} > {self.rsi_os} "
+                f"(no oversold state to fade)"
+            )
+            return None
+
+        reason = (
+            f"Z={z:.2f} | RSI={rsi:.1f} | "
+            f"ADX={adx:.1f} | slope={slope:.6f}"
+        )
 
         # ── Filter: 4H bias — don't fade the higher-timeframe trend ──────────
         if bias_4h == "DOWN" and direction == "BUY":
@@ -204,9 +226,24 @@ class MeanReversionStrategy(StrategyBase):
         # ── Compute SL / TP ────────────────────────────────────────────────────
         sl_dist = atr * self.sl_mult
 
+        # Use the configured ATR floor multiplier directly.
+        # This guarantees TP >= tp_atr_floor_mult × ATR regardless of VWAP
+        # proximity. With sl_atr_mult=2.0, min_rr=1.3, tp_atr_floor_mult=3.0:
+        #   required for RR: 2.0 × 1.3 = 2.6 ATR
+        #   actual floor:    3.0 ATR > 2.6 ATR → RR filter always passes ✓
+        #   round-trip cost: ~1.85 pips vs 3.0 ATR ≈ 24-54 pips → costs covered ✓
+        tp_floor_dist = atr * self.tp_atr_floor_mult
+
         if direction == "BUY":
             sl = entry - sl_dist
-            tp = entry + (vwap - entry) * 0.8
+
+            # VWAP target: 80% reversion toward rolling mean
+            vwap_tp = entry + (vwap - entry) * 0.8
+
+            # TP = whichever is further from entry: VWAP target or ATR floor
+            # If VWAP is very close (small dislocation), ATR floor wins.
+            # If VWAP is far (large dislocation), VWAP target wins — larger reward.
+            tp = max(vwap_tp, entry + tp_floor_dist)
 
             if tp <= entry:
                 return None
@@ -214,15 +251,30 @@ class MeanReversionStrategy(StrategyBase):
             reward = tp - entry
             risk   = entry - sl
 
-        else:
+        else:   # SELL
             sl = entry + sl_dist
-            tp = entry - (entry - vwap) * 0.8
+
+            vwap_tp = entry - (entry - vwap) * 0.8
+
+            tp = min(vwap_tp, entry - tp_floor_dist)
 
             if tp >= entry:
                 return None
 
             reward = entry - tp
             risk   = sl - entry
+
+        # RR check — with the ATR floor above this is almost always met.
+        # Kept as a final safety gate for edge cases (e.g. ATR spike between
+        # signal bar and entry bar changing the effective distances).
+        rr = reward / risk if risk > 0 else 0
+
+        if rr < self.min_rr:
+            logger.debug(
+                f"MR filter: RR {rr:.2f} < {self.min_rr} after ATR floor → skip "
+                f"(entry={entry:.5f} sl={sl:.5f} tp={tp:.5f} atr={atr:.6f})"
+            )
+            return None
 
 
         # Enforce minimum risk/reward

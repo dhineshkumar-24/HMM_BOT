@@ -2,11 +2,26 @@
 check_updates.py  —  Run this FIRST before any backtest.
 Verifies that all Phase 1-9 updates are actually in the codebase.
 
-Run from inside hmm_bot/:
-    python check_updates.py
+Can be run from any working directory:
+    python hmm_bot/check_updates.py
+    cd hmm_bot && python check_updates.py
 """
 
 import os, sys, importlib
+
+# ── Anchor all paths to this file's directory ─────────────────────────────────
+# Previously used bare relative paths like os.path.isdir("research/alpha")
+# which broke when invoked from outside hmm_bot/. All checks now use
+# ROOT-anchored absolute paths — correct regardless of working directory.
+ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# Ensure imports resolve correctly from ROOT when check() calls importlib
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+def _p(*parts: str) -> str:
+    """Build an absolute path relative to the hmm_bot/ root."""
+    return os.path.join(ROOT, *parts)
 
 PASS = "  ✅"
 FAIL = "  ❌"
@@ -28,65 +43,65 @@ print("="*60 + "\n")
 # ── 1. FOLDER STRUCTURE ───────────────────────────────────────────
 print("📁  Folder Structure")
 check("research/alpha/ folder exists",
-      os.path.isdir("research/alpha"),
-      "mkdir research\\alpha")
+      os.path.isdir(_p("research", "alpha")),
+      f"mkdir {_p('research', 'alpha')}")
 
 check("research/validation/ folder exists",
-      os.path.isdir("research/validation"),
-      "mkdir research\\validation")
+      os.path.isdir(_p("research", "validation")),
+      f"mkdir {_p('research', 'validation')}")
 
 check("portfolio/ folder exists",
-      os.path.isdir("portfolio"),
-      "mkdir portfolio")
+      os.path.isdir(_p("portfolio")),
+      f"mkdir {_p('portfolio')}")
 
 check("risk_controls/ folder exists",
-      os.path.isdir("risk_controls"),
-      "mkdir risk_controls")
+      os.path.isdir(_p("risk_controls")),
+      f"mkdir {_p('risk_controls')}")
 
 check("analytics/ folder exists",
-      os.path.isdir("analytics"),
-      "mkdir analytics")
+      os.path.isdir(_p("analytics")),
+      f"mkdir {_p('analytics')}")
 
 # ── 2. ALPHA FILES ────────────────────────────────────────────────
 print("\n📊  Alpha Signal Files")
 check("research/alpha/mean_reversion_alpha.py exists",
-      os.path.isfile("research/alpha/mean_reversion_alpha.py"),
-      "This file was supposed to be created in Phase 3 — recreate it")
+      os.path.isfile(_p("research", "alpha", "mean_reversion_alpha.py")),
+      "Phase 3 file missing — recreate it")
 
 check("research/alpha/momentum_alpha.py exists",
-      os.path.isfile("research/alpha/momentum_alpha.py"),
+      os.path.isfile(_p("research", "alpha", "momentum_alpha.py")),
       "Phase 3 file missing — recreate it")
 
 check("research/alpha/microstructure_alpha.py exists",
-      os.path.isfile("research/alpha/microstructure_alpha.py"),
+      os.path.isfile(_p("research", "alpha", "microstructure_alpha.py")),
       "Phase 3 file missing — recreate it")
 
 check("research/alpha/regime_alpha.py exists",
-      os.path.isfile("research/alpha/regime_alpha.py"),
+      os.path.isfile(_p("research", "alpha", "regime_alpha.py")),
       "Phase 3 file missing — recreate it")
 
 # ── 3. VALIDATION + PORTFOLIO ─────────────────────────────────────
 print("\n🔬  Validation & Portfolio")
 check("research/validation/signal_validator.py exists",
-      os.path.isfile("research/validation/signal_validator.py"),
+      os.path.isfile(_p("research", "validation", "signal_validator.py")),
       "Phase 5 file missing — recreate it")
 
 check("portfolio/signal_combiner.py exists",
-      os.path.isfile("portfolio/signal_combiner.py"),
+      os.path.isfile(_p("portfolio", "signal_combiner.py")),
       "Phase 7 file missing — recreate it")
 
 check("research/experiment_tracker.py exists",
-      os.path.isfile("research/experiment_tracker.py"),
+      os.path.isfile(_p("research", "experiment_tracker.py")),
       "Phase 9 file missing — recreate it")
 
 # ── 4. RISK CONTROLS ─────────────────────────────────────────────
 print("\n🛡️   Risk Controls (CRITICAL)")
 check("risk_controls/drawdown_monitor.py exists",
-      os.path.isfile("risk_controls/drawdown_monitor.py"),
+      os.path.isfile(_p("risk_controls", "drawdown_monitor.py")),
       "CRITICAL: main.py imports this — bot will crash without it")
 
 check("risk_controls/loss_streak_monitor.py exists",
-      os.path.isfile("risk_controls/loss_streak_monitor.py"),
+      os.path.isfile(_p("risk_controls", "loss_streak_monitor.py")),
       "CRITICAL: main.py imports this — bot will crash without it")
 
 # ── 5. FEATURE COLS CHECK ─────────────────────────────────────────
@@ -142,18 +157,18 @@ for mod_name, cls in [
 
 # ── 8. SIGNAL COMBINER WIRING ─────────────────────────────────────
 print("\n🔌  Router → Combiner Wiring")
+router_path = _p("strategy", "strategy_router.py")
 try:
-    with open("strategy/strategy_router.py", "r") as f:
+    with open(router_path, "r") as f:
         router_code = f.read()
     check("strategy_router.py imports signal_combiner",
           "signal_combiner" in router_code or "SignalCombiner" in router_code,
-          "CRITICAL: Router is not wired to combiner. "
-          "Alpha modules are dead code until this is connected.")
+          "CRITICAL: Router is not wired to combiner.")
     check("strategy_router.py imports alpha modules",
           "mean_reversion_alpha" in router_code or "research.alpha" in router_code,
           "Router does not call any alpha module — alpha signals have no effect")
 except FileNotFoundError:
-    print(f"{FAIL}  strategy/strategy_router.py not found")
+    print(f"{FAIL}  strategy/strategy_router.py not found at {router_path}")
 
 # ── SUMMARY ───────────────────────────────────────────────────────
 fails = [r for r in results if r[0] == FAIL]
