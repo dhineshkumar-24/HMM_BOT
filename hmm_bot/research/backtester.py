@@ -151,9 +151,31 @@ def run_backtest(
 
         # ── Update open positions ──────────────────────────────────────────────
         newly_closed = sim.update(bar, i)
+        consecutive_losses = 0
         for t in newly_closed:
             balance = max(0, balance + t.net_pnl)
             pending_pnl = 0.0
+            if t.exit_reason == "SL" and t.net_pnl < 0:
+                consecutive_losses += 1
+
+        # Mirror live loss streak gate in backtester
+        max_consec = config.get("risk", {}).get("max_consecutive_losses", 2)
+        if not hasattr(sim, "_consec_losses"):
+            sim._consec_losses = 0
+        if consecutive_losses > 0:
+            sim._consec_losses += consecutive_losses
+        elif newly_closed and any(t.net_pnl > 0 for t in newly_closed):
+            sim._consec_losses = 0
+
+        if sim._consec_losses >= max_consec:
+            logger.debug(
+                f"[Backtester] Loss streak {sim._consec_losses} — "
+                f"skipping next {288} bars (1 trading day equivalent)"
+            )
+            # Skip 288 bars = 1 day of M5 data
+            i += 288
+            sim._consec_losses = 0
+            continue
         # ── Context-aware time stop ───────────────────────────────────────────
         # Base time limit by regime — how long price typically needs to revert
         # or follow through before the thesis is invalidated.
@@ -263,10 +285,27 @@ def run_backtest(
         window = df.iloc[: i + 1]
 
         if use_router:
+            # Override regime with intrabar fast classifier for Asian session.
+            # HMM gap=0.067 too weak to trust for trend/MR routing.
+            # get_intrabar_regime() uses ADX+ER — responds in real time.
+            from utils.features import get_intrabar_regime
+            from utils.helpers import SESSION_ASIAN, detect_session
+            from core.hmm_model import REGIME_MEAN_REVERT, REGIME_TRENDING
+
+            bar_session = detect_session(config, candle_time)
+            if bar_session == SESSION_ASIAN and regime != 2:
+                intrabar = get_intrabar_regime(window)
+                if intrabar == "trending":
+                    routing_regime = REGIME_TRENDING
+                else:
+                    routing_regime = REGIME_MEAN_REVERT
+            else:
+                routing_regime = regime
+
             signal = strategy.route(
                 window,
                 candle_time = candle_time,
-                regime      = regime,
+                regime      = routing_regime,
                 bias_4h     = bias_4h
             )
         else:

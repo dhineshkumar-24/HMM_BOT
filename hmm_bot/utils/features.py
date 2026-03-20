@@ -242,6 +242,63 @@ def build_feature_matrix(df, vol_window=20, atr_period=14,
     features.dropna(inplace=True)
     return features
 
+def get_intrabar_regime(df: pd.DataFrame) -> str:
+    """
+    Fast intrabar trend/MR classifier using ADX + Efficiency Ratio.
+    Replaces HMM trend/MR routing — HMM only provides vol regime now.
+
+    Returns:
+        "trending"     — ADX > 22 AND ER > 0.35
+        "mean_rev"     — ADX < 18 AND ER < 0.25
+        "neutral"      — between thresholds, use vol regime default
+
+    Called every bar from strategy_router.py before signal dispatch.
+    """
+    if len(df) < 30:
+        return "neutral"
+
+    close = df["close"]
+    high  = df["high"]
+    low   = df["low"]
+
+    # ADX — fast period 10 for M5 intraday responsiveness
+    prev_close = close.shift(1)
+    tr = pd.concat([
+        (high - low).abs(),
+        (high - prev_close).abs(),
+        (low  - prev_close).abs(),
+    ], axis=1).max(axis=1)
+
+    up   = high - high.shift(1)
+    down = low.shift(1) - low
+    pdm  = up.where((up > down) & (up > 0), 0.0)
+    mdm  = down.where((down > up) & (down > 0), 0.0)
+
+    period = 10
+    atr_s  = tr.ewm(alpha=1/period, min_periods=period, adjust=False).mean()
+    pdm_s  = pdm.ewm(alpha=1/period, min_periods=period, adjust=False).mean()
+    mdm_s  = mdm.ewm(alpha=1/period, min_periods=period, adjust=False).mean()
+
+    pdi = 100 * (pdm_s / atr_s.replace(0, np.nan))
+    mdi = 100 * (mdm_s / atr_s.replace(0, np.nan))
+    dx  = 100 * (pdi - mdi).abs() / (pdi + mdi).replace(0, np.nan)
+    adx = dx.ewm(alpha=1/period, min_periods=period, adjust=False).mean()
+
+    # ER — 20-bar window
+    net_move   = close.diff(20).abs()
+    total_path = close.diff().abs().rolling(20).sum()
+    er = (net_move / total_path.replace(0, np.nan)).clip(0, 1)
+
+    last_adx = float(adx.iloc[-2]) if len(adx) >= 2 else 0.0
+    last_er  = float(er.iloc[-2])  if len(er) >= 2 else 0.0
+
+    if last_adx > 22 and last_er > 0.35:
+        return "trending"
+    elif last_adx < 18 and last_er < 0.25:
+        return "mean_rev"
+    else:
+        return "neutral"
+
 def get_feature_names() -> list[str]:
     """Return the canonical ordered list of feature column names."""
     return list(FEATURE_COLS)

@@ -214,9 +214,12 @@ class HMMRegimeDetector:
             f"HMM training complete. Best log-likelihood: {best_score:.4f} "
             f"| Converged: {best_model.monitor_.converged}"
         )
-        self._log_model_summary()
-        # ── Align learned state integers to economic regime labels ─────────────
+        # ── Align FIRST — then log with correct economic labels ────────────────
+        # _log_model_summary() uses self.regime_name(i) which reads _label_map.
+        # If alignment runs after summary, the summary prints wrong label names
+        # because _label_map is still the identity map {0:0,1:1,2:2}.
         self._label_map = self._align_state_labels()
+        self._log_model_summary()
 
     # ── Prediction ────────────────────────────────────────────────────────────
 
@@ -480,38 +483,51 @@ class HMMRegimeDetector:
 
     # ── Internal ──────────────────────────────────────────────────────────────
 
-   def _log_model_summary(self) -> None:
-        """Log the trained model's transition matrix and mean vectors."""
+    def _log_model_summary(self) -> None:
+        """Log the trained model's transition matrix and mean vectors.
+
+        Called AFTER _align_state_labels() so regime_name() shows the
+        correct economic label (mean_reverting / trending / high_volatility)
+        rather than the raw hmmlearn integer state index.
+        """
         if self._model is None:
             return
         logger.info("── HMM Model Summary ─────────────────")
         tm = self._model.transmat_
         for i in range(self.n_states):
             row = "  ".join(f"{p:.3f}" for p in tm[i])
-            logger.info(f"  State {i} ({self.regime_name(i):18s}) transitions: [{row}]")
+            # _label_map[i] converts raw hmmlearn state i to canonical regime int
+            # regime_name() then converts canonical int to human label
+            canonical = self._label_map.get(i, i)
+            logger.info(
+                f"  State {i} ({self.regime_name(canonical):18s}) "
+                f"transitions: [{row}]"
+            )
         logger.info("── Feature Means per State ───────────")
         for i, mean_vec in enumerate(self._model.means_):
             vals = "  ".join(f"{v:+.4f}" for v in mean_vec)
-            logger.info(f"  State {i} means: [{vals}]")
+            canonical = self._label_map.get(i, i)
+            logger.info(
+                f"  State {i} ({self.regime_name(canonical):12s}) "
+                f"means: [{vals}]"
+            )
         logger.info("──────────────────────────────────────")
 
     def _align_state_labels(self) -> dict:
         """
         Map learned HMM states to economic regime labels.
-
-        Structure is strictly ordered to prevent NameError:
-            Step 1 — identify HIGH_VOL (requires only vol features)
-            Step 2 — define `remaining` immediately after Step 1
-            Step 3 — attempt enhanced feature lookup (ER/VR/Hurst/MLAC)
-            Step 4 — compute trending_scores using whatever is available
-            Step 5 — assign labels and log results
+        Step 1 — identify HIGH_VOL
+        Step 2 — define remaining immediately after Step 1
+        Step 3 — attempt enhanced feature lookup
+        Step 4 — compute trending_scores
+        Step 5 — assign labels and log
         """
         if self._model is None:
             return {0: 0, 1: 1, 2: 2}
 
         means = self._model.means_
 
-        # ── Step 1: Core vol features — required ──────────────────────────────
+        # ── Step 1: Core vol features ─────────────────────────────────────────
         try:
             IDX_RVOL = FEATURE_COLS.index("realized_vol")
             IDX_VOV  = FEATURE_COLS.index("vol_of_vol")
@@ -519,12 +535,11 @@ class HMMRegimeDetector:
         except ValueError as exc:
             logger.error(
                 f"Core volatility feature missing: {exc}. "
-                f"FEATURE_COLS = {FEATURE_COLS}. "
-                f"Cannot identify HIGH_VOL state — returning identity map."
+                f"Returning identity map."
             )
             return {0: 0, 1: 1, 2: 2}
 
-        # ── Step 2: HIGH_VOL state + remaining — always defined here ──────────
+        # ── Step 2: HIGH_VOL + remaining ──────────────────────────────────────
         combined_vol   = means[:, IDX_RVOL] + means[:, IDX_ATR] + means[:, IDX_VOV]
         high_vol_state = int(np.argmax(combined_vol))
         remaining      = [i for i in range(self.n_states) if i != high_vol_state]
@@ -550,7 +565,7 @@ class HMMRegimeDetector:
             except ValueError:
                 pass
 
-        # ── Step 4: Compute trending scores ───────────────────────────────────
+        # ── Step 4: Trending scores ───────────────────────────────────────────
         if enhanced_available:
             trending_scores = {
                 state: (
@@ -582,18 +597,16 @@ class HMMRegimeDetector:
                 }
                 method = "last-resort (drawdown proxy)"
                 logger.warning(
-                    "Neither enhanced nor legacy trend features found in "
-                    f"FEATURE_COLS = {FEATURE_COLS}. "
-                    "Using drawdown_pct as weak trending proxy."
+                    "Neither enhanced nor legacy trend features found. "
+                    f"FEATURE_COLS = {FEATURE_COLS}."
                 )
             except ValueError:
                 logger.error(
-                    "No usable trend features found. Returning identity map. "
-                    f"FEATURE_COLS = {FEATURE_COLS}"
+                    f"No usable trend features. FEATURE_COLS = {FEATURE_COLS}"
                 )
                 return {0: 0, 1: 1, 2: 2}
 
-        # ── Step 5: Assign labels ──────────────────────────────────────────────
+        # ── Step 5: Assign labels ─────────────────────────────────────────────
         trending_state = max(trending_scores, key=trending_scores.get)
         mean_rev_state = [s for s in remaining if s != trending_state][0]
 
@@ -606,31 +619,30 @@ class HMMRegimeDetector:
         score_gap = abs(
             trending_scores[trending_state] - trending_scores[mean_rev_state]
         )
+
         if score_gap < 0.10:
             logger.warning(
-                f"Trending vs mean-revert alignment confidence is LOW "
-                f"(score gap = {score_gap:.4f}). "
-                f"Regime routing may be unreliable. "
-                f"Method used: {method}."
+                f"Alignment confidence LOW (gap={score_gap:.4f}). "
+                f"Method: {method}."
             )
 
-        logger.info("── State Label Alignment (multi-feature) ──────────")
+        logger.info("── State Label Alignment ──────────────────────────")
         logger.info(
             f"  Learned state {high_vol_state} → HIGH_VOL    "
-            f"| vol_score = {combined_vol[high_vol_state]:+.4f}"
+            f"| vol_score={combined_vol[high_vol_state]:+.4f}"
         )
         logger.info(
             f"  Learned state {trending_state} → TRENDING    "
-            f"| trend_score = {trending_scores[trending_state]:+.4f}"
+            f"| trend_score={trending_scores[trending_state]:+.4f}"
         )
         logger.info(
             f"  Learned state {mean_rev_state} → MEAN_REVERT "
-            f"| trend_score = {trending_scores[mean_rev_state]:+.4f}"
+            f"| trend_score={trending_scores[mean_rev_state]:+.4f}"
         )
         logger.info(
-            f"  Alignment confidence gap: {score_gap:.4f} "
-            f"({'GOOD' if score_gap >= 0.10 else 'WEAK — see warning above'}) "
-            f"| Method: {method}"
+            f"  Gap={score_gap:.4f} "
+            f"({'GOOD' if score_gap >= 0.10 else 'WEAK'}) "
+            f"| Method={method}"
         )
         logger.info("───────────────────────────────────────────────────")
 

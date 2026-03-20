@@ -39,12 +39,12 @@ strategy:
 
   # Mean Reversion (Asian + MEAN_REVERT regime)
   mean_reversion:
-    z_score_trigger: 2.0         # |Z| >= this to consider entry
+    z_score_trigger: 2.3         # |Z| >= this to consider entry
     z_score_exit: 0.0            # Z returns here → TP = rolling mean
     rsi_overbought: 60           # RSI must exceed this for SELL
     rsi_oversold: 40             # RSI must be below this for BUY
     ema_slope_flat: 0.25      # |EMA50 slope| must be <= this (flat)
-    adx_max: 18                  # ADX must be < this (no strong trend)
+    adx_max: 16                  # ADX must be < this (no strong trend)
     sl_atr_mult: 2.0             # SL = ATR * sl_atr_mult
     trail_atr_mult: 1.5          # Trailing stop = ATR * trail_atr_mult
     min_rr: 1.3
@@ -54,7 +54,7 @@ strategy:
   momentum:
     adx_min: 25                  # ADX must be >= this (trending)
     ema_fast: 21                  # Fast EMA for trend direction
-    ema_slow: 100                 # Slow EMA for baseline trend
+    ema_slow: 50                 # Slow EMA for baseline trend
     rsi_trend_low: 45            # RSI long filter (> 40 for BUY)
     rsi_trend_high: 55           # RSI short filter (< 60 for SELL)
     sl_atr_mult: 5.0             # SL = ATR * sl_atr_mult
@@ -84,7 +84,7 @@ execution:
 backtest:
   start_date:   "2020-01-24"      # Format: YYYY-MM-DD
   end_date:     "2026-01-01"      # Format: YYYY-MM-DD
-  train_split:  0.70              # 70% train, 30% test
+  train_split:  0.65              # 70% train, 30% test
   cache_dir:    "data/cache"      # Where to store Parquet cache files
   force_refetch: false            # Set true to ignore cache and re-fetch
 
@@ -100,11 +100,11 @@ hmm:
   n_components: 3 # Number of regimes
   n_iter: 250 # Number of iterations for training - Expectation-Maximization (EM
   covariance_type: "diag" # Type of covariance matrix
-  confidence_threshold: 0.70 # Confidence threshold for regime detection
+  confidence_threshold: 0.65 # Confidence threshold for regime detection
   regime_names:
     0: "mean_reverting"
     1: "trending"
     2: "high_volatility"
   model_path: "models/hmm.pkl"
   feature_lookback: 20000 # Number of bars to look back for feature extraction
-  retrain_interval: 1500 # Number of bars to look back for feature extraction new candles
+  retrain_interval: 5000 # Number of bars to look back for feature extraction new candles

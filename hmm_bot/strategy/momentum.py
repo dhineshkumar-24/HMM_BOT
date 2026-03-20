@@ -61,6 +61,11 @@ class MomentumStrategy(StrategyBase):
         if len(df) < 120:
             return None
 
+        from core.hmm_model import REGIME_MEAN_REVERT
+        from utils.helpers import SESSION_ASIAN
+        if session == SESSION_ASIAN and regime == REGIME_MEAN_REVERT:
+            return None
+
         prev = df.iloc[-2]
 
         alpha_mr  = prev.get("alpha_mr",  float("nan"))
@@ -218,6 +223,28 @@ class MomentumStrategy(StrategyBase):
         #── Gate: reject weak signals ─────────────────────────────────────────
         if signal_strength < self.min_combined_score:
             return None
+
+        if len(df) >= 3:
+            prev2      = df.iloc[-3]
+            alpha_mr2  = prev2.get("alpha_mr",  0.0)
+            alpha_mom2 = prev2.get("alpha_mom", 0.0)
+
+            if direction == "BUY":
+                # Both bars must show positive alpha_mr (price below VWAP)
+                if alpha_mr2 < 0.5:
+                    logger.debug(
+                        f"Confirmation filter: BUY blocked — "
+                        f"prev2 alpha_mr={alpha_mr2:.2f} < 0.5"
+                    )
+                    return None
+            else:
+                # Both bars must show negative alpha_mr (price above VWAP)
+                if alpha_mr2 > -0.5:
+                    logger.debug(
+                        f"Confirmation filter: SELL blocked — "
+                        f"prev2 alpha_mr={alpha_mr2:.2f} > -0.5"
+                    )
+                    return None
 
         # ── SL / TP — regime-scaled ───────────────────────────────────────────
         # In trending regime use wider SL (trend can retest)

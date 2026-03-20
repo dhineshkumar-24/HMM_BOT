@@ -70,6 +70,7 @@ class StrategyRouter:
         # Instantiate sub-strategies
         self._mean_rev = MeanReversionStrategy(config)
         self._momentum = MomentumStrategy(config)
+        self._alpha    = self._momentum   # alias — route() uses _alpha
         self._combiner = SignalCombiner(config)
 
         # ── Routing table: (session, regime) → strategy instance ──────────────
@@ -165,12 +166,38 @@ class StrategyRouter:
             return None
 
         # ── Look up routing table ──────────────────────────────────────────────
-        strategy = self._routing.get((session, regime))
+        # ── Two-layer routing ──────────────────────────────────────────────────
+        # Layer 1: HMM vol regime — hard gate only
+        #   HIGH_VOL → skip all trading regardless of session
+        #   NORMAL / QUIET → proceed to Layer 2
+        #
+        # Layer 2: Fast ADX+ER intrabar classifier
+        #   Replaces HMM trend/MR label (gap too weak to trust for routing)
+        #   get_intrabar_regime() returns "trending", "mean_rev", or "neutral"
+
+        # Layer 1 gate
+        if regime == REGIME_HIGH_VOL:
+            logger.debug("HIGH_VOL regime — no trade.")
+            return None
+
+        # Layer 2 routing
+        from utils.features import get_intrabar_regime
+        intrabar = get_intrabar_regime(df)
+
+        if session == SESSION_ASIAN:
+            if intrabar == "trending":
+                strategy = self._momentum   # trending during Asian → alpha
+            else:
+                strategy = self._mean_rev   # neutral or mean-rev → MeanRev
+
+        elif session in (SESSION_LONDON, SESSION_NY):
+            strategy = self._momentum       # alpha handles both signals internally
+
+        else:
+            logger.debug(f"No active session at {candle_time} — no trade.")
+            return None
 
         if strategy is None:
-            logger.debug(
-                f"No strategy for session={session}, regime={regime} — no trade."
-            )
             return None
 
         # SignalCombiner removed — alpha strategy self-filters via thresholds
