@@ -121,70 +121,69 @@ def generate_html_report(
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HMM Bot — {symbol} Backtest {ts}</title>
+<title>Alpha Quant — {symbol} Backtest {ts}</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   *{{box-sizing:border-box;margin:0;padding:0}}
   :root{{
-    --bg:#ffffff;--bg2:#f5f5f3;--bg3:#ebebea;
-    --txt:#1a1a18;--txt2:#5f5e5a;--txt3:#888780;
-    --brd:#e0ded8;--brd2:#cac8c2;
-    --red:#E24B4A;--red-bg:#FCEBEB;--red-brd:#F7C1C1;
-    --grn:#3B6D11;--grn-bg:#EAF3DE;--grn-brd:#C0DD97;
-    --info:#185FA5;--info-bg:#E6F1FB;
-    --mono:'Courier New',monospace;
-    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
-    --rad:8px;--rad-lg:12px;
+    --bg:#0A0F1C;--bg2:#111827;--bg3:#1F2937;
+    --txt:#F3F4F6;--txt2:#9CA3AF;--txt3:#6B7280;
+    --brd:#374151;--brd2:#4B5563;
+    --red:#F43F5E;--red-bg:rgba(244,63,94,0.1);--red-brd:rgba(244,63,94,0.3);
+    --grn:#10B981;--grn-bg:rgba(16,185,129,0.1);--grn-brd:rgba(16,185,129,0.3);
+    --info:#38BDF8;--info-bg:rgba(56,189,248,0.1);
+    --accent:#6366F1;
+    --mono:'JetBrains Mono',monospace;
+    --sans:'Inter',-apple-system,sans-serif;
+    --rad:8px;--rad-lg:16px;
   }}
-  @media(prefers-color-scheme:dark){{
-    :root{{
-      --bg:#1e1e1c;--bg2:#2a2a28;--bg3:#333330;
-      --txt:#f0ede6;--txt2:#b4b2a9;--txt3:#888780;
-      --brd:#3a3a38;--brd2:#4a4a48;
-      --red:#F09595;--red-bg:#501313;--red-brd:#791F1F;
-      --grn:#97C459;--grn-bg:#173404;--grn-brd:#3B6D11;
-      --info:#85B7EB;--info-bg:#042C53;
-    }}
-  }}
-  body{{background:var(--bg3);color:var(--txt);font-family:var(--sans);font-size:14px;line-height:1.5;padding:24px 16px}}
-  .page{{max-width:960px;margin:0 auto}}
+  body{{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14px;line-height:1.5;padding:32px 24px;background-image:radial-gradient(ellipse at top, #1E1B4B 0%, var(--bg) 50%);background-attachment:fixed;}}
+  .page{{max-width:1100px;margin:0 auto}}
   .sep{{border:none;border-top:1px solid var(--brd);margin:16px 0}}
-  .panel{{background:var(--bg);border:1px solid var(--brd);border-radius:var(--rad-lg);padding:16px;margin-bottom:12px}}
-  .panel-dark{{background:var(--bg2);border:1px solid var(--brd)}}
-  .hdr-title{{font-size:16px;font-weight:600;color:var(--txt)}}
-  .hdr-sub{{font-size:12px;color:var(--txt3);margin-top:4px}}
-  .cfg-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}}
-  .cfg-item{{background:var(--bg2);border-radius:var(--rad);padding:10px 12px}}
-  .cfg-label{{font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.05em}}
-  .cfg-val{{font-size:13px;font-weight:600;color:var(--txt);margin-top:3px}}
-  .metric-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}}
-  .mcard{{border-radius:var(--rad);padding:12px 14px;border:1px solid}}
-  .mcard .lbl{{font-size:11px;margin-bottom:5px}}
-  .mcard .val{{font-size:22px;font-weight:600}}
-  .mcard .sub{{font-size:11px;margin-top:4px}}
-  .mcard-danger{{background:var(--red-bg);border-color:var(--red-brd);color:var(--red)}}
-  .mcard-success{{background:var(--grn-bg);border-color:var(--grn-brd);color:var(--grn)}}
-  .stats-grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}}
-  .block-title{{font-size:11px;font-weight:600;color:var(--txt3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}}
-  .stat-row{{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--brd)}}
+  .panel{{background:var(--bg2);border:1px solid var(--brd);border-radius:var(--rad-lg);padding:24px;margin-bottom:16px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1),0 2px 4px -2px rgba(0,0,0,0.1);position:relative;overflow:hidden}}
+  .panel::after{{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);}}
+  .panel-dark{{background:var(--bg3);border:1px solid var(--brd)}}
+  .hdr-title{{font-size:24px;font-weight:700;color:var(--txt);letter-spacing:-0.02em}}
+  .hdr-sub{{font-size:13px;color:var(--info);margin-top:6px;font-family:var(--mono)}}
+  .cfg-grid{{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}}
+  .cfg-item{{background:var(--bg3);border-radius:var(--rad);padding:12px;border:1px solid var(--brd);position:relative;overflow:hidden}}
+  .cfg-label{{font-size:10px;color:var(--txt2);text-transform:uppercase;letter-spacing:0.1em;font-weight:600}}
+  .cfg-val{{font-size:14px;font-weight:600;color:var(--txt);margin-top:6px;font-family:var(--mono)}}
+  .metric-grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}}
+  .mcard{{border-radius:var(--rad-lg);padding:20px;border:1px solid;position:relative;background:var(--bg3);display:flex;flex-direction:column;justify-content:center}}
+  .mcard::before{{content:"";position:absolute;top:0;left:0;bottom:0;width:4px;border-top-left-radius:var(--rad-lg);border-bottom-left-radius:var(--rad-lg)}}
+  .mcard .lbl{{font-size:12px;color:var(--txt2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;font-weight:600}}
+  .mcard .val{{font-size:32px;font-weight:700;letter-spacing:-0.03em;font-family:var(--mono)}}
+  .mcard .sub{{font-size:12px;margin-top:8px;font-family:var(--mono);opacity:0.8}}
+  .mcard-danger{{border-color:var(--red-brd);color:var(--red)}}
+  .mcard-danger::before{{background:var(--red)}}
+  .mcard-success{{border-color:var(--grn-brd);color:var(--grn)}}
+  .mcard-success::before{{background:var(--grn)}}
+  .stats-grid{{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}}
+  .block-title{{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px;display:flex;align-items:center}}
+  .block-title::before{{content:"";display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:8px;box-shadow:0 0 8px var(--accent)}}
+  .stat-row{{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--brd)}}
   .stat-row:last-child{{border-bottom:none}}
-  .sk{{font-size:12px;color:var(--txt2)}}
-  .sv{{font-size:12px;font-weight:600}}
-  .sv-good{{color:var(--grn)}}
-  .sv-bad{{color:var(--red)}}
-  .val-header{{display:flex;align-items:center;gap:10px;margin-bottom:10px}}
-  .val-badge{{font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px;letter-spacing:.04em}}
-  .val-fail{{background:var(--red-bg);color:var(--red);border:1px solid var(--red-brd)}}
-  .val-pass{{background:var(--grn-bg);color:var(--grn);border:1px solid var(--grn-brd)}}
-  .val-row{{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--brd)}}
-  .val-row:last-child{{border-bottom:none}}
-  .val-name{{font-size:12px;color:var(--txt2);font-family:var(--mono)}}
-  .val-sub{{font-size:11px;color:var(--txt3);margin-top:2px}}
-  .pill{{font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:.04em}}
+  .sk{{font-size:13px;color:var(--txt2)}}
+  .sv{{font-size:13px;font-weight:600;font-family:var(--mono)}}
+  .sv-good{{color:var(--grn);text-shadow:0 0 10px rgba(16,185,129,0.3)}}
+  .sv-bad{{color:var(--red);text-shadow:0 0 10px rgba(244,63,94,0.3)}}
+  .val-header{{display:flex;align-items:center;gap:12px;margin-bottom:16px}}
+  .val-badge{{font-size:12px;font-weight:700;padding:4px 12px;border-radius:6px;letter-spacing:0.05em;text-transform:uppercase}}
+  .val-fail{{background:var(--red-bg);color:var(--red);border:1px solid var(--red-brd);box-shadow:0 0 15px rgba(244,63,94,0.2)}}
+  .val-pass{{background:var(--grn-bg);color:var(--grn);border:1px solid var(--grn-brd);box-shadow:0 0 15px rgba(16,185,129,0.2)}}
+  .val-row{{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--bg3);border:1px solid var(--brd);border-radius:var(--rad);margin-bottom:8px}}
+  .val-name{{font-size:14px;color:var(--txt);font-weight:600}}
+  .val-sub{{font-size:12px;color:var(--txt3);margin-top:4px;font-family:var(--mono)}}
+  .pill{{font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;letter-spacing:0.05em}}
   .pill-ok{{background:var(--grn-bg);color:var(--grn);border:1px solid var(--grn-brd)}}
   .pill-fail{{background:var(--red-bg);color:var(--red);border:1px solid var(--red-brd)}}
-  .report-path{{font-family:var(--mono);font-size:11px;color:var(--info);word-break:break-all;margin-top:4px}}
-  .footer{{text-align:center;font-size:11px;color:var(--txt3);margin-top:20px}}
+  .report-path{{font-family:var(--mono);font-size:12px;color:var(--accent);word-break:break-all;margin-top:6px;background:var(--bg);padding:8px 12px;border-radius:var(--rad);border:1px solid var(--brd)}}
+  .footer{{text-align:center;font-size:12px;color:var(--txt3);margin-top:32px;font-family:var(--mono)}}
+  @media(max-width:900px){{
+    .cfg-grid{{grid-template-columns:repeat(3,1fr)}}
+  }}
   @media(max-width:600px){{
     .metric-grid,.cfg-grid{{grid-template-columns:repeat(2,1fr)}}
     .stats-grid{{grid-template-columns:1fr}}
@@ -275,25 +274,6 @@ def generate_html_report(
   </div>
 </div>
 
-<div class="panel">
-  <div class="val-header">
-    <div style="font-size:14px;font-weight:600">Validation</div>
-    <span class="val-badge {overall_class}">{overall_text}</span>
-    <div style="font-size:12px;color:var(--txt3);margin-left:auto">{passed_count} of 4 rules passed</div>
-  </div>
-  {''.join(val_rows)}
-</div>
-
-<div class="panel panel-dark">
-  <div class="block-title">Report files</div>
-  <div style="margin-bottom:8px">
-    <div class="sk">Trades CSV</div>
-    <div class="report-path">{os.path.abspath(output_dir)}/{symbol}_backtest_{ts}_trades.csv</div>
-  </div>
-  <div>
-    <div class="sk">Metrics CSV</div>
-    <div class="report-path">{os.path.abspath(output_dir)}/{symbol}_backtest_{ts}_metrics.csv</div>
-  </div>
 </div>
 
 <div class="footer">HMM Adaptive Trading Bot &middot; {symbol} &middot; Generated {run_time}</div>
@@ -304,16 +284,15 @@ def generate_html_report(
 const eq = {eq_json};
 const labels = {labels_json};
 const baseline = eq.map(() => {getattr(args,'balance',10000)});
-const isDark = matchMedia('(prefers-color-scheme: dark)').matches;
-const gridCol = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-const tickCol = '#888780';
+const gridCol = 'rgba(255,255,255,0.05)';
+const tickCol = '#6B7280';
 new Chart(document.getElementById('eqChart'), {{
   type:'line',
   data:{{
     labels,
     datasets:[
-      {{label:'Balance',data:eq,borderColor:'#E24B4A',borderWidth:2,pointRadius:0,pointHoverRadius:4,tension:0.3,fill:true,backgroundColor:'rgba(226,75,74,0.08)'}},
-      {{label:'Baseline',data:baseline,borderColor:'#888780',borderWidth:1,borderDash:[4,4],pointRadius:0,tension:0}}
+      {{label:'Balance',data:eq,borderColor:'#06B6D4',borderWidth:2,pointRadius:0,pointHoverRadius:4,tension:0.3,fill:true,backgroundColor:'rgba(6,182,212,0.1)'}},
+      {{label:'Baseline',data:baseline,borderColor:'#4B5563',borderWidth:1,borderDash:[4,4],pointRadius:0,tension:0}}
     ]
   }},
   options:{{
@@ -322,18 +301,20 @@ new Chart(document.getElementById('eqChart'), {{
     plugins:{{
       legend:{{display:false}},
       tooltip:{{
-        backgroundColor:isDark?'#2a2a28':'#fff',
-        borderColor:isDark?'#444441':'#D3D1C7',
+        backgroundColor:'#1F2937',
+        borderColor:'#374151',
         borderWidth:1,
-        titleColor:isDark?'#f0ede6':'#1a1a18',
-        bodyColor:'#888780',
-        padding:10,
+        titleColor:'#F3F4F6',
+        bodyColor:'#9CA3AF',
+        padding:12,
+        titleFont:{{family:'JetBrains Mono',size:13}},
+        bodyFont:{{family:'JetBrains Mono',size:13}},
         callbacks:{{label:ctx=>ctx.dataset.label==='Balance'?' $'+ctx.parsed.y.toFixed(2):null}}
       }}
     }},
     scales:{{
-      x:{{grid:{{color:gridCol,drawTicks:false}},ticks:{{color:tickCol,font:{{size:10}},maxTicksLimit:10,maxRotation:0}},border:{{display:false}}}},
-      y:{{grid:{{color:gridCol}},ticks:{{color:tickCol,font:{{size:10}},callback:v=>'$'+v.toLocaleString()}},border:{{display:false}}}}
+      x:{{grid:{{color:gridCol,drawTicks:false}},ticks:{{color:tickCol,font:{{family:'JetBrains Mono',size:10}},maxTicksLimit:10,maxRotation:0}},border:{{display:false}}}},
+      y:{{grid:{{color:gridCol}},ticks:{{color:tickCol,font:{{family:'JetBrains Mono',size:11}},callback:v=>'$'+v.toLocaleString()}},border:{{display:false}}}}
     }}
   }}
 }});
