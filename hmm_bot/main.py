@@ -105,7 +105,7 @@ def main() -> None:
 
     hmm = HMMRegimeDetector(
         n_states      = CONFIG.get("hmm", {}).get("n_components",         3),
-        n_iter        = CONFIG.get("hmm", {}).get("n_iter",             100),
+        n_iter        = CONFIG.get("hmm", {}).get("n_iter",             300),
         n_seeds       = 3,
         model_path    = CONFIG.get("hmm", {}).get("model_path",  "models/hmm.pkl"),
         confidence_thr= CONFIG.get("hmm", {}).get("confidence_threshold", 0.60),
@@ -129,7 +129,7 @@ def main() -> None:
     last_candle_time     = None
     last_heartbeat_min   = None
     candle_counter       = 0
-    retrain_interval     = CONFIG.get("hmm", {}).get("retrain_interval", 1000)
+    retrain_interval     = CONFIG.get("hmm", {}).get("retrain_interval", 10000)
 
     # ── 4. Main trading loop ───────────────────────────────────────────────────
     while True:

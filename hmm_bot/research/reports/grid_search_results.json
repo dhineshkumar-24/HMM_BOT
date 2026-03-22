@@ -1,0 +1,3468 @@
+{
+  "best_params": {
+    "strategy.mean_reversion.z_score_trigger": 2.5,
+    "strategy.mean_reversion.adx_max": 18,
+    "strategy.momentum.adx_min": 18,
+    "strategy.momentum.rsi_trend_low": 35
+  },
+  "best_score": 2.09864606094502,
+  "metric": "sharpe",
+  "all_results": [
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 1.8,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.34517678811103797,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 42,
+        "win_count": 16,
+        "loss_count": 26,
+        "win_rate": 0.38095238095238093,
+        "net_profit": -30.146592021929084,
+        "gross_profit": 547.7126002510992,
+        "gross_loss": 577.8591922730283,
+        "avg_win": 34.2320375156937,
+        "avg_loss": 22.225353548962627,
+        "profit_factor": 0.9478305572965855,
+        "expectancy": -0.7177760005221234,
+        "max_drawdown": 0.017743482381974634,
+        "sharpe": -0.34517678811103797,
+        "sortino": -0.9710766162372261
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.0,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 0.0007050732892040824,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": true,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 40,
+        "win_count": 15,
+        "loss_count": 25,
+        "win_rate": 0.375,
+        "net_profit": 0.058335854598112746,
+        "gross_profit": 527.1209074991289,
+        "gross_loss": 527.0625716445307,
+        "avg_win": 35.14139383327526,
+        "avg_loss": 21.08250286578123,
+        "profit_factor": 1.0001106810798879,
+        "expectancy": 0.0014583963649528187,
+        "max_drawdown": 0.014767612421122598,
+        "sharpe": 0.0007050732892040824,
+        "sortino": 0.001984703908577928
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.3,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": -0.020514458823356705,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": false,
+          "max_drawdown": true
+        },
+        "total_trades": 25,
+        "win_count": 8,
+        "loss_count": 17,
+        "win_rate": 0.32,
+        "net_profit": -1.2064996009266267,
+        "gross_profit": 359.03953380521716,
+        "gross_loss": 360.24603340614385,
+        "avg_win": 44.879941725652145,
+        "avg_loss": 21.190943141537872,
+        "profit_factor": 0.9966509010813549,
+        "expectancy": -0.048259984037064996,
+        "max_drawdown": 0.017036009546537972,
+        "sharpe": -0.020514458823356705,
+        "sortino": -0.050240247114754825
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 18,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 20,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 18,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 20,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 35
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 40
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    },
+    {
+      "params": {
+        "strategy.mean_reversion.z_score_trigger": 2.5,
+        "strategy.mean_reversion.adx_max": 22,
+        "strategy.momentum.adx_min": 25,
+        "strategy.momentum.rsi_trend_low": 45
+      },
+      "score": 2.09864606094502,
+      "metrics": {
+        "passed": false,
+        "rules": {
+          "min_trades": false,
+          "win_rate": false,
+          "profit_factor": true,
+          "max_drawdown": true
+        },
+        "total_trades": 17,
+        "win_count": 6,
+        "loss_count": 11,
+        "win_rate": 0.35294117647058826,
+        "net_profit": 87.23240890854669,
+        "gross_profit": 283.65595329832377,
+        "gross_loss": 196.42354438977705,
+        "avg_win": 47.275992216387294,
+        "avg_loss": 17.856685853616096,
+        "profit_factor": 1.444103629122206,
+        "expectancy": 5.131318171090987,
+        "max_drawdown": 0.011705715807404992,
+        "sharpe": 2.09864606094502,
+        "sortino": 5.612771742803981
+      }
+    }
+  ]
+}

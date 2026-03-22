@@ -205,7 +205,7 @@ def get_feature_names() -> list[str]:
 # Statistical Alpha Feature Matrix (NEW)
 # ─────────────────────────────────────────────────────────────────────────────
 
-def build_alpha_features(df: pd.DataFrame) -> pd.DataFrame:
+def build_alpha_features(df: pd.DataFrame, vwap_window: int = 20, mom_period: int = 60) -> pd.DataFrame:
     """
     Regime-adaptive alpha features.
     Mean reversion alpha:  fade short-term overextension vs VWAP
@@ -222,23 +222,23 @@ def build_alpha_features(df: pd.DataFrame) -> pd.DataFrame:
     vol50 = log_ret.rolling(50).std()
 
     # ── MEAN REVERSION ALPHA ──────────────────────────────────────────────────
-    # VWAP-based Z-score: price vs its 20-bar mean, scaled by recent vol
+    # VWAP-based Z-score: price vs its N-bar mean, scaled by recent vol
     # Positive = price ABOVE mean = overextended UP = SELL candidate
     # Negative = price BELOW mean = overextended DOWN = BUY candidate
-    roll_mean = close.rolling(20).mean()
-    roll_std  = close.rolling(20).std().replace(0, np.nan)
+    roll_mean = close.rolling(vwap_window).mean()
+    roll_std  = close.rolling(vwap_window).std().replace(0, np.nan)
     z_vwap    = (close - roll_mean) / roll_std          # standard z-score
     alpha_mr  = -z_vwap                                 # invert: positive = BUY
     # Scale: alpha_mr > 1.5 means price is 1.5 sigma below mean = strong BUY setup
 
     # ── MOMENTUM ALPHA ────────────────────────────────────────────────────────
-    # Time-series momentum: cumulative 60-bar sign
+    # Time-series momentum: cumulative N-bar sign
     # Use sign of returns summed — avoids magnitude domination
     r5  = close.pct_change(5)
     r20 = close.pct_change(20)
-    r60 = close.pct_change(60)
+    r_mom = close.pct_change(mom_period)
     # Normalize by volatility so it's comparable across calm and volatile periods
-    alpha_mom = r60 / vol50.replace(0, np.nan)
+    alpha_mom = r_mom / vol50.replace(0, np.nan)
     # Clip to ±5 to prevent extreme momentum values from dominating
     alpha_mom = alpha_mom.clip(-5, 5)
 
@@ -276,7 +276,7 @@ def build_alpha_features(df: pd.DataFrame) -> pd.DataFrame:
     result = pd.DataFrame({
     "r5":              r5,
     "r20":             r20,
-    "r60":             r60,
+    "r60":             r_mom,
     "vol10":           vol10,
     "vol50":           vol50,
     "z_vwap":          z_vwap,
