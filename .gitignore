@@ -18,3 +18,5 @@ venv/
 # OS / editor files
 .DS_Store
 .vscode/
+
+/hmm_bot/research/reports/
