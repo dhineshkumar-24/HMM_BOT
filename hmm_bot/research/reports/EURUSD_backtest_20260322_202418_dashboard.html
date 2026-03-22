@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alpha Quant — EURUSD Backtest 20260322_202418</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0A0F1C;--bg2:#111827;--bg3:#1F2937;
+    --txt:#F3F4F6;--txt2:#9CA3AF;--txt3:#6B7280;
+    --brd:#374151;--brd2:#4B5563;
+    --red:#F43F5E;--red-bg:rgba(244,63,94,0.1);--red-brd:rgba(244,63,94,0.3);
+    --grn:#10B981;--grn-bg:rgba(16,185,129,0.1);--grn-brd:rgba(16,185,129,0.3);
+    --info:#38BDF8;--info-bg:rgba(56,189,248,0.1);
+    --accent:#6366F1;
+    --mono:'JetBrains Mono',monospace;
+    --sans:'Inter',-apple-system,sans-serif;
+    --rad:8px;--rad-lg:16px;
+  }
+  body{background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:14px;line-height:1.5;padding:32px 24px;background-image:radial-gradient(ellipse at top, #1E1B4B 0%, var(--bg) 50%);background-attachment:fixed;}
+  .page{max-width:1100px;margin:0 auto}
+  .sep{border:none;border-top:1px solid var(--brd);margin:16px 0}
+  .panel{background:var(--bg2);border:1px solid var(--brd);border-radius:var(--rad-lg);padding:24px;margin-bottom:16px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1),0 2px 4px -2px rgba(0,0,0,0.1);position:relative;overflow:hidden}
+  .panel::after{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);}
+  .panel-dark{background:var(--bg3);border:1px solid var(--brd)}
+  .hdr-title{font-size:24px;font-weight:700;color:var(--txt);letter-spacing:-0.02em}
+  .hdr-sub{font-size:13px;color:var(--info);margin-top:6px;font-family:var(--mono)}
+  .cfg-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px}
+  .cfg-item{background:var(--bg3);border-radius:var(--rad);padding:12px;border:1px solid var(--brd);position:relative;overflow:hidden}
+  .cfg-label{font-size:10px;color:var(--txt2);text-transform:uppercase;letter-spacing:0.1em;font-weight:600}
+  .cfg-val{font-size:14px;font-weight:600;color:var(--txt);margin-top:6px;font-family:var(--mono)}
+  .metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+  .mcard{border-radius:var(--rad-lg);padding:20px;border:1px solid;position:relative;background:var(--bg3);display:flex;flex-direction:column;justify-content:center}
+  .mcard::before{content:"";position:absolute;top:0;left:0;bottom:0;width:4px;border-top-left-radius:var(--rad-lg);border-bottom-left-radius:var(--rad-lg)}
+  .mcard .lbl{font-size:12px;color:var(--txt2);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;font-weight:600}
+  .mcard .val{font-size:32px;font-weight:700;letter-spacing:-0.03em;font-family:var(--mono)}
+  .mcard .sub{font-size:12px;margin-top:8px;font-family:var(--mono);opacity:0.8}
+  .mcard-danger{border-color:var(--red-brd);color:var(--red)}
+  .mcard-danger::before{background:var(--red)}
+  .mcard-success{border-color:var(--grn-brd);color:var(--grn)}
+  .mcard-success::before{background:var(--grn)}
+  .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  .block-title{font-size:12px;font-weight:700;color:var(--txt);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:16px;display:flex;align-items:center}
+  .block-title::before{content:"";display:inline-block;width:8px;height:8px;background:var(--accent);border-radius:50%;margin-right:8px;box-shadow:0 0 8px var(--accent)}
+  .stat-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--brd)}
+  .stat-row:last-child{border-bottom:none}
+  .sk{font-size:13px;color:var(--txt2)}
+  .sv{font-size:13px;font-weight:600;font-family:var(--mono)}
+  .sv-good{color:var(--grn);text-shadow:0 0 10px rgba(16,185,129,0.3)}
+  .sv-bad{color:var(--red);text-shadow:0 0 10px rgba(244,63,94,0.3)}
+  .val-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .val-badge{font-size:12px;font-weight:700;padding:4px 12px;border-radius:6px;letter-spacing:0.05em;text-transform:uppercase}
+  .val-fail{background:var(--red-bg);color:var(--red);border:1px solid var(--red-brd);box-shadow:0 0 15px rgba(244,63,94,0.2)}
+  .val-pass{background:var(--grn-bg);color:var(--grn);border:1px solid var(--grn-brd);box-shadow:0 0 15px rgba(16,185,129,0.2)}
+  .val-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--bg3);border:1px solid var(--brd);border-radius:var(--rad);margin-bottom:8px}
+  .val-name{font-size:14px;color:var(--txt);font-weight:600}
+  .val-sub{font-size:12px;color:var(--txt3);margin-top:4px;font-family:var(--mono)}
+  .pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;letter-spacing:0.05em}
+  .pill-ok{background:var(--grn-bg);color:var(--grn);border:1px solid var(--grn-brd)}
+  .pill-fail{background:var(--red-bg);color:var(--red);border:1px solid var(--red-brd)}
+  .report-path{font-family:var(--mono);font-size:12px;color:var(--accent);word-break:break-all;margin-top:6px;background:var(--bg);padding:8px 12px;border-radius:var(--rad);border:1px solid var(--brd)}
+  .footer{text-align:center;font-size:12px;color:var(--txt3);margin-top:32px;font-family:var(--mono)}
+  @media(max-width:900px){
+    .cfg-grid{grid-template-columns:repeat(3,1fr)}
+  }
+  @media(max-width:600px){
+    .metric-grid,.cfg-grid{grid-template-columns:repeat(2,1fr)}
+    .stats-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+    <div>
+      <div class="hdr-title">HMM Bot — Quantitative Research Framework</div>
+      <div class="hdr-sub">Backtest completed &middot; 2021-01-24 → 2026-01-01 &middot; EURUSD &middot; M5</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:11px;color:var(--txt3)">run at</div>
+      <div style="font-size:12px;font-weight:600">2026-03-22 20:24:18</div>
+    </div>
+  </div>
+</div>
+
+<div class="cfg-grid">
+  <div class="cfg-item"><div class="cfg-label">Mode</div><div class="cfg-val">backtest</div></div>
+  <div class="cfg-item"><div class="cfg-label">Bars (test)</div><div class="cfg-val">113 trades on 50,000 bars</div></div>
+  <div class="cfg-item"><div class="cfg-label">Starting balance</div><div class="cfg-val">$10,000.00</div></div>
+  <div class="cfg-item"><div class="cfg-label">HMM</div><div class="cfg-val">trained</div></div>
+  <div class="cfg-item"><div class="cfg-label">Spread / slippage</div><div class="cfg-val">1.5p / 0.5p</div></div>
+  <div class="cfg-item"><div class="cfg-label">Commission</div><div class="cfg-val">$6.00 / lot</div></div>
+</div>
+
+<div class="metric-grid">
+  <div class="mcard mcard-danger">
+    <div class="lbl">Net profit</div>
+    <div class="val">$-785.87</div>
+    <div class="sub">-7.86% return</div>
+  </div>
+  <div class="mcard mcard-success">
+    <div class="lbl">Win rate</div>
+    <div class="val">46.0%</div>
+    <div class="sub">52W / 61L / 113 total</div>
+  </div>
+  <div class="mcard mcard-danger">
+    <div class="lbl">Profit factor</div>
+    <div class="val">0.48</div>
+    <div class="sub">needs &gt; 1.20</div>
+  </div>
+  <div class="mcard mcard-danger">
+    <div class="lbl">Max drawdown</div>
+    <div class="val">7.85%</div>
+    <div class="sub">limit: 5%</div>
+  </div>
+</div>
+
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="block-title" style="margin:0">Equity curve</div>
+    <div style="display:flex;gap:16px;font-size:11px;color:var(--txt3)">
+      <span style="display:flex;align-items:center;gap:4px">
+        <span style="width:14px;height:2px;background:#E24B4A;display:inline-block"></span>Balance
+      </span>
+      <span style="display:flex;align-items:center;gap:4px">
+        <span style="width:14px;height:2px;background:#888780;display:inline-block;border-top:2px dashed #888780"></span>Baseline
+      </span>
+    </div>
+  </div>
+  <div style="position:relative;width:100%;height:220px">
+    <canvas id="eqChart"></canvas>
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="panel">
+    <div class="block-title">PnL breakdown</div>
+    <div class="stat-row"><span class="sk">Gross profit</span><span class="sv sv-good">+$730.93</span></div>
+    <div class="stat-row"><span class="sk">Gross loss</span><span class="sv sv-bad">-$1,516.80</span></div>
+    <div class="stat-row"><span class="sk">Avg win</span><span class="sv sv-good">+$14.06</span></div>
+    <div class="stat-row"><span class="sk">Avg loss</span><span class="sv sv-bad">-$24.87</span></div>
+    <div class="stat-row"><span class="sk">Expectancy</span><span class="sv sv-bad">$-6.95 / trade</span></div>
+  </div>
+  <div class="panel">
+    <div class="block-title">Risk metrics</div>
+    <div class="stat-row"><span class="sk">Sharpe ratio</span><span class="sv sv-bad">-3.911</span></div>
+    <div class="stat-row"><span class="sk">Sortino ratio</span><span class="sv sv-bad">-5.961</span></div>
+    <div class="stat-row"><span class="sk">Max drawdown</span><span class="sv sv-bad">7.85%</span></div>
+    <div class="stat-row"><span class="sk">Total trades</span><span class="sv">113</span></div>
+    <div class="stat-row"><span class="sk">Wins / Losses</span><span class="sv">52 / 61</span></div>
+    <div class="stat-row"><span class="sk">VaR (95%)</span><span class="sv sv-bad">$49.28</span></div>
+    <div class="stat-row"><span class="sk">CVaR (95%)</span><span class="sv sv-bad">$49.59</span></div>
+  </div>
+</div>
+
+</div>
+
+<div class="footer">HMM Adaptive Trading Bot &middot; EURUSD &middot; Generated 2026-03-22 20:24:18</div>
+
+</div>
+
+<script>
+const eq = [10000.0, 10000.0, 9949.14, 9904.34, 9834.99, 9834.99, 9834.99, 9834.99, 9785.44, 9764.77, 9712.8, 9700.47, 9704.07, 9704.61, 9677.91, 9799.49, 9827.94, 9783.49, 9733.85, 9733.5, 9712.12, 9712.12, 9709.66, 9674.08, 9667.48, 9672.61, 9625.38, 9616.65, 9597.79, 9584.31, 9548.78, 9624.09, 9624.09, 9624.1, 9624.1, 9680.15, 9680.15, 9692.08, 9701.66, 9701.66, 9701.66, 9701.66, 9678.07, 9678.07, 9678.07, 9678.07, 9678.07, 9678.07, 9678.07, 9678.07, 9678.07, 9678.07, 9681.34, 9683.63, 9683.86, 9683.86, 9683.86, 9683.86, 9683.86, 9683.86, 9683.86, 9683.86, 9683.86, 9683.86, 9683.86, 9683.86, 9683.86, 9662.67, 9629.78, 9629.78, 9638.87, 9638.87, 9638.87, 9605.45, 9605.45, 9608.07, 9573.87, 9573.87, 9573.87, 9574.38, 9545.41, 9550.4, 9519.98, 9446.92, 9446.92, 9410.97, 9403.63, 9380.11, 9385.83, 9390.0, 9391.58, 9383.89, 9336.27, 9337.45, 9378.12, 9365.71, 9363.44, 9303.57, 9257.67, 9213.88, 9213.88, 9214.13];
+const labels = ["0", "252", "504", "756", "1008", "1260", "1512", "1764", "2016", "2268", "2520", "2772", "3024", "3276", "3528", "3780", "4032", "4284", "4536", "4788", "5040", "5292", "5544", "5796", "6048", "6300", "6552", "6804", "7056", "7308", "7560", "7812", "8064", "8316", "8568", "8820", "9072", "9324", "9576", "9828", "10080", "10332", "10584", "10836", "11088", "11340", "11592", "11844", "12096", "12348", "12600", "12852", "13104", "13356", "13608", "13860", "14112", "14364", "14616", "14868", "15120", "15372", "15624", "15876", "16128", "16380", "16632", "16884", "17136", "17388", "17640", "17892", "18144", "18396", "18648", "18900", "19152", "19404", "19656", "19908", "20160", "20412", "20664", "20916", "21168", "21420", "21672", "21924", "22176", "22428", "22680", "22932", "23184", "23436", "23688", "23940", "24192", "24444", "24696", "24948", "25200", "25452"];
+const baseline = eq.map(() => 10000.0);
+const gridCol = 'rgba(255,255,255,0.05)';
+const tickCol = '#6B7280';
+new Chart(document.getElementById('eqChart'), {
+  type:'line',
+  data:{
+    labels,
+    datasets:[
+      {label:'Balance',data:eq,borderColor:'#06B6D4',borderWidth:2,pointRadius:0,pointHoverRadius:4,tension:0.3,fill:true,backgroundColor:'rgba(6,182,212,0.1)'},
+      {label:'Baseline',data:baseline,borderColor:'#4B5563',borderWidth:1,borderDash:[4,4],pointRadius:0,tension:0}
+    ]
+  },
+  options:{
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{display:false},
+      tooltip:{
+        backgroundColor:'#1F2937',
+        borderColor:'#374151',
+        borderWidth:1,
+        titleColor:'#F3F4F6',
+        bodyColor:'#9CA3AF',
+        padding:12,
+        titleFont:{family:'JetBrains Mono',size:13},
+        bodyFont:{family:'JetBrains Mono',size:13},
+        callbacks:{label:ctx=>ctx.dataset.label==='Balance'?' $'+ctx.parsed.y.toFixed(2):null}
+      }
+    },
+    scales:{
+      x:{grid:{color:gridCol,drawTicks:false},ticks:{color:tickCol,font:{family:'JetBrains Mono',size:10},maxTicksLimit:10,maxRotation:0},border:{display:false}},
+      y:{grid:{color:gridCol},ticks:{color:tickCol,font:{family:'JetBrains Mono',size:11},callback:v=>'$'+v.toLocaleString()},border:{display:false}}
+    }
+  }
+});
+</script>
+</body>
+</html>
