@@ -14,12 +14,11 @@ mtf:
 
 trading:
   symbol: "EURUSD"
-  timeframe: "M5"
-  risk_per_trade: 0.005          # v5.0: halved from 1% → 0.5% (precision sizing)
+  timeframe: "H1"
+  risk_per_trade: 0.01           # 1% per trade
   max_daily_drawdown_pct: 0.02   # v5.0: tighter 2% daily (was 3%)
   max_total_drawdown_pct: 0.15
   risk_reward_ratio: 2.0
-  leverage: 100
 
 # ── Strategy Parameters ───────────────────────────────────────────────────────
 strategy:
@@ -27,62 +26,66 @@ strategy:
   rsi_period: 14
   atr_period: 14
   adx_period: 10
-  vwap_window: 21
-  vwap_window_slow: 50
-  hurst_threshold: 0.45
+  # Base feature lookbacks
+  vwap_window: 20
+  momentum:
+    mom_period: 24               # 24 hours of momentum instead of 60
 
+  # Alpha weights — v5.0: focused deeply on combined multi-factor edge
   alpha:
-    threshold_percentile: 70
-    tp_vol_mult: 6.0
-    sl_vol_mult: 4.5
-    min_sl_pips: 0.00150         # v5.0: 15-pip floor (was 10)
+    threshold_percentile: 65
+    tp_vol_mult: 2.0             # H1 targets 2.0x ATR cleanly
+    sl_vol_mult: 1.5             # 1.5x ATR stops
+    min_sl_pips: 0.00150         # 15-pip floor for safe execution
     min_edge_pips: 0.00015
     min_combined_score: 1.50
     combined_threshold: 0.40
+    mr_mom_filter: 1.0           
+    trend_pullback: 0.2          
 
-  # Mean Reversion — v5.0: wider SL, achievable TP
+  # Mean Reversion
   mean_reversion:
-    z_score_trigger: 2.0         # v5.0: raised from 1.8 → 2.0 (higher conviction)
-    z_slow_trigger: 1.2          # v5.0: raised from 1.0 → 1.2
-    z_score_exit: 0.0
-    rsi_overbought: 65           # v5.0: was 60 → 65 (need stronger signal)
-    rsi_oversold:   35           # v5.0: was 40 → 35
+    z_score_trigger: 1.5         # Lowered to capture realistic bounce zones
+    z_slow_trigger: 1.0
+    z_score_exit: 0.0            # Exit exactly at mean
+    rsi_overbought: 65
+    rsi_oversold:   35
     ema_slope_flat: 0.0005
-    adx_max: 22                  # v5.0: tighter from 25 → 22 (must be truly ranging)
-    sl_atr_mult: 2.5
-    min_sl_pips: 0.00150         # v5.0: 15-pip floor!!! (was 10 → 86% SL hit)
-    max_sl_pips: 0.00350         # 35-pip ceiling
-    trail_atr_mult: 1.8
-    min_rr: 2.0                  # v5.0: strict 1:2 minimum
-    min_tp_atr_mult: 3.0         # v5.0: raised from 2.0 → 3.0
+    adx_max: 20
+    sl_atr_mult: 2.0             # Fat stop loss to endure noise
+    min_sl_pips: 0.00150
+    max_sl_pips: 0.00400
+    trail_atr_mult: 1.5
+    min_rr: 1.0                  # Allow sub-1RR to guarantee high win rate scalps
+    min_tp_atr_mult: 1.5         # Extremely conservative TP target
     bar_confirm: true
-    cooling_bars: 6              # v5.0: longer from 4 → 6
-    ou_max_half_life: 50         # v5.0: relaxed from 40 → 50
-    min_atr_ratio: 0.6           # v5.0 NEW: anti-noise filter
+    cooling_bars: 3
+    ou_max_half_life: 40
+    min_atr_ratio: 0.8
 
-  # Momentum — v5.0: precision entries, wider SL, achievable TP
+  # Momentum
   momentum:
-    adx_min: 22                  # v5.0: raised from 20 → 22
-    di_separation: 5             # v5.0 NEW: min gap between DI+ and DI-
-    ema_period_fast: 21
+    adx_min: 15                  # Pick up momentum earlier
+    di_separation: 8
+    ema_period_fast: 20
     ema_period_slow: 50
-    ema_period_base: 100
-    rsi_overbought: 70           # v5.0 NEW: don't chase overextended
+    ema_period_base: 200
+    rsi_overbought: 70           # Give momentum room to run
     rsi_oversold: 30
-    min_rr: 2.0                  # v5.0: strict 1:2 minimum
+    min_rr: 1.0
 
-    # SL/TP — v5.0: WIDER SL above noise, achievable TP
-    sl_atr_mult: 2.0             # ~15-20 pips on EURUSD M5
-    tp_atr_mult: 4.0             # ~30-40 pips
-    trail_atr_mult: 2.5
-    min_sl_pips: 0.00150         # v5.0: 15-pip floor!!! (was 10 → killed us)
-    max_sl_pips: 0.00400         # 40-pip ceiling
-    cooling_bars: 6              # v5.0: longer from 3 → 6
-    min_atr_ratio: 0.6           # v5.0 NEW: skip low-vol noise periods
+    # SL/TP
+    sl_atr_mult: 1.5             # Fat stop
+    tp_atr_mult: 2.0             # Achievable TP (1.5 ATR is approx 20 pips on M15)
+    trail_atr_mult: 1.5          # Aggressive trail
+    min_sl_pips: 0.00150
+    max_sl_pips: 0.00400
+    cooling_bars: 3
+    min_atr_ratio: 0.8
 
-    # Momentum thresholds — v5.0: higher bar for entry
-    mom_threshold: 1.5           # v5.0: raised from 1.0 → 1.5
-    mom_trend_threshold: 1.2     # lower in confirmed trending regime
+    # Momentum thresholds
+    mom_threshold: 0.8         
+    mom_trend_threshold: 0.6
 
     breakeven_atr: 1.0
 

@@ -255,10 +255,9 @@ class MomentumStrategy(StrategyBase):
             return None
         if direction == "SELL" and bar_close > bar_open:
             return None
-
-        # ── FILTER 8: Post-SL cooling period ──────────────────────────────────
-        bars_since_sl = bar_idx - self._last_sl_bar.get(direction, -999)
-        if bars_since_sl < self.cooling_bars:
+        
+        #── Gate: reject weak signals ─────────────────────────────────────────
+        if signal_strength < self.min_combined_score:
             return None
 
         # ── Compute SL / TP — ATR-based with WIDE FLOORS ─────────────────────
