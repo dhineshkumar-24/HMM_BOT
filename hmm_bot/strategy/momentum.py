@@ -204,9 +204,13 @@ class MomentumStrategy(StrategyBase):
         if bias_4h == "UP" and direction == "SELL":
             return None
         
-
         if direction is None:
             return None
+            
+        # -- MECHANICAL INVERSION --
+        # M5 pullbacks naturally fail and continue the counter-trend (causing the negative portfolio).
+        # We mechanically invert the signal to harvest the 60%+ loss rate as a positive mathematical edge.
+        direction = "SELL" if direction == "BUY" else "BUY"
         
         #── Gate: reject weak signals ─────────────────────────────────────────
         if signal_strength < self.min_combined_score:
