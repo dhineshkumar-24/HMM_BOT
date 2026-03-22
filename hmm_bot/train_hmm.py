@@ -4,7 +4,7 @@ from core.hmm_model import HMMRegimeDetector
 
 SYMBOL = "EURUSD"
 TIMEFRAME = mt5.TIMEFRAME_M1
-BARS = 50000
+BARS = 80000
 
 print("Connecting to MT5...")
 

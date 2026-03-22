@@ -1,0 +1,65 @@
+﻿============================================================
+  ROOT CAUSE ANALYSIS ù 238 Trades
+============================================================
+
+1. EXIT REASON BREAKDOWN:
+exit_reason
+SL      205
+TIME     23
+TP       10
+
+2. PNL BY EXIT REASON:
+  SL    : 205 trades | WR=20.0% | Net=$-4990.96 | Avg=$-24.35
+  TIME  :  23 trades | WR=39.1% | Net=$-128.28 | Avg=$-5.58
+  TP    :  10 trades | WR=100.0% | Net=$+1027.78 | Avg=$+102.78
+
+3. DIRECTION BREAKDOWN:
+  BUY: 198 trades | WR=25.3% | Net=$-3479.10
+  SELL: 40 trades | WR=25.0% | Net=$-612.35
+
+4. SESSION BREAKDOWN:
+  asian     :  71 trades | WR=16.9% | Net=$-1448.21
+  london    :  58 trades | WR=29.3% | Net=$-1104.75
+  newyork   : 109 trades | WR=28.4% | Net=$-1538.51
+
+5. STRATEGY BREAKDOWN:
+  MomentumStrategy: 238 trades | WR=25.2% | Net=$-4091.46
+
+6. REGIME BREAKDOWN:
+  Regime 1: 175 trades | WR=25.1% | Net=$-3171.41
+  Regime 2:  63 trades | WR=25.4% | Net=$-920.05
+
+7. SL/TP DISTANCE ANALYSIS:
+  SL distance: mean=5.2pips, median=4.3pips
+  TP distance: mean=23.0pips, median=22.0pips
+
+8. COST ANALYSIS:
+  Total costs: $2818.83
+  Avg cost/trade: $11.84
+  Costs as % of gross profit: 58.0%
+
+9. LOTS ANALYSIS:
+  Lots: mean=0.564, min=0.070, max=0.850
+
+10. SAMPLE TRADES (first 10):
+  direction  entry_price  exit_price  lots    net_pnl exit_reason  session  regime
+0       BUY     1.171127    1.171218  0.85  -3.758860          SL    asian       1
+1       BUY     1.171779    1.171984  0.85   5.957480          SL    asian       1
+2       BUY     1.172712    1.172728  0.85 -10.100973          SL   london       1
+3       BUY     1.172230    1.171586  0.82 -63.833385          SL   london       1
+4       BUY     1.173506    1.172541  0.78 -85.845704          SL   london       1
+5       BUY     1.171416    1.171606  0.84   4.645228          SL    asian       1
+6       BUY     1.168566    1.167480  0.59 -72.054852          SL   london       2
+7      SELL     1.164653    1.164181  0.28   9.429244          SL   london       2
+8      SELL     1.162744    1.163812  0.47 -56.563810          SL  newyork       2
+9      SELL     1.161435    1.162749  0.43 -62.319748          SL  newyork       2
+
+11. WINNING TRADES ANALYSIS:
+  Avg win: $34.08
+  Avg loss: $-34.47
+  Avg win / Avg loss ratio: 0.99
+
+12. CONSECUTIVE ANALYSIS:
+  Max consecutive losses: 14
+  Avg loss streak: 3.8
+  Streaks > 5: 9

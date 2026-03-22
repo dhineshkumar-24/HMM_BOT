@@ -14,8 +14,8 @@ mtf:
 
 trading:
   symbol: "EURUSD"
-  timeframe: "M15"
-  risk_per_trade: 0.01          # v5.0: halved from 1% → 0.5% (precision sizing)
+  timeframe: "M5"
+  risk_per_trade: 0.005          # v5.0: halved from 1% → 0.5% (precision sizing)
   max_daily_drawdown_pct: 0.02   # v5.0: tighter 2% daily (was 3%)
   max_total_drawdown_pct: 0.15
   risk_reward_ratio: 2.0
@@ -32,59 +32,57 @@ strategy:
   hurst_threshold: 0.45
 
   alpha:
-    threshold_percentile: 65
-    tp_vol_mult: 4.0          # Ultra Scalp TP
-    sl_vol_mult: 2.0             # Normal SL to avoid 60-pip massacres
-    min_sl_pips: 0.00060         # 6-pip floor
+    threshold_percentile: 70
+    tp_vol_mult: 6.0
+    sl_vol_mult: 4.5
+    min_sl_pips: 0.00150         # v5.0: 15-pip floor (was 10)
     min_edge_pips: 0.00015
     min_combined_score: 1.50
     combined_threshold: 0.40
-    mr_mom_filter: 1.5           
-    trend_pullback: 1.0       
 
   # Mean Reversion — v5.0: wider SL, achievable TP
   mean_reversion:
-    z_score_trigger: 1.7         # Lowered to capture realistic bounce zones
-    z_slow_trigger: 1.0
-    z_score_exit: 0.0            # Exit exactly at mean
-    rsi_overbought: 65
-    rsi_oversold:   35
+    z_score_trigger: 2.0         # v5.0: raised from 1.8 → 2.0 (higher conviction)
+    z_slow_trigger: 1.2          # v5.0: raised from 1.0 → 1.2
+    z_score_exit: 0.0
+    rsi_overbought: 65           # v5.0: was 60 → 65 (need stronger signal)
+    rsi_oversold:   35           # v5.0: was 40 → 35
     ema_slope_flat: 0.0005
-    adx_max: 25
-    sl_atr_mult: 3.5             # Fat stop loss to endure noise
-    min_sl_pips: 0.00100
-    max_sl_pips: 0.00400
-    trail_atr_mult: 1.5
-    min_rr: 0.5                  # Allow sub-1RR to guarantee high win rate scalps
-    min_tp_atr_mult: 0.8         # Extremely conservative TP target
+    adx_max: 22                  # v5.0: tighter from 25 → 22 (must be truly ranging)
+    sl_atr_mult: 2.5
+    min_sl_pips: 0.00150         # v5.0: 15-pip floor!!! (was 10 → 86% SL hit)
+    max_sl_pips: 0.00350         # 35-pip ceiling
+    trail_atr_mult: 1.8
+    min_rr: 2.0                  # v5.0: strict 1:2 minimum
+    min_tp_atr_mult: 3.0         # v5.0: raised from 2.0 → 3.0
     bar_confirm: true
-    cooling_bars: 4
-    ou_max_half_life: 40
-    min_atr_ratio: 0.8
+    cooling_bars: 6              # v5.0: longer from 4 → 6
+    ou_max_half_life: 50         # v5.0: relaxed from 40 → 50
+    min_atr_ratio: 0.6           # v5.0 NEW: anti-noise filter
 
   # Momentum — v5.0: precision entries, wider SL, achievable TP
   momentum:
-    adx_min: 15                  # Pick up momentum earlier
-    di_separation: 8
+    adx_min: 22                  # v5.0: raised from 20 → 22
+    di_separation: 5             # v5.0 NEW: min gap between DI+ and DI-
     ema_period_fast: 21
     ema_period_slow: 50
     ema_period_base: 100
-    rsi_overbought: 75           # Give momentum room to run
-    rsi_oversold: 25
-    min_rr: 0.5                  # Sub-1RR perfectly acceptable on HMM filtered signals
+    rsi_overbought: 70           # v5.0 NEW: don't chase overextended
+    rsi_oversold: 30
+    min_rr: 2.0                  # v5.0: strict 1:2 minimum
 
-    # SL/TP
-    sl_atr_mult: 3.5             # Fat stop
-    tp_atr_mult: 1.5             # Achievable TP (1.5 ATR is approx 20 pips on M15)
-    trail_atr_mult: 1.2          # Aggressive trail
-    min_sl_pips: 0.00100
-    max_sl_pips: 0.00400
-    cooling_bars: 4
-    min_atr_ratio: 0.8
+    # SL/TP — v5.0: WIDER SL above noise, achievable TP
+    sl_atr_mult: 2.0             # ~15-20 pips on EURUSD M5
+    tp_atr_mult: 4.0             # ~30-40 pips
+    trail_atr_mult: 2.5
+    min_sl_pips: 0.00150         # v5.0: 15-pip floor!!! (was 10 → killed us)
+    max_sl_pips: 0.00400         # 40-pip ceiling
+    cooling_bars: 6              # v5.0: longer from 3 → 6
+    min_atr_ratio: 0.6           # v5.0 NEW: skip low-vol noise periods
 
-    # Momentum thresholds
-    mom_threshold: 1.5         
-    mom_trend_threshold: 1.2
+    # Momentum thresholds — v5.0: higher bar for entry
+    mom_threshold: 1.5           # v5.0: raised from 1.0 → 1.5
+    mom_trend_threshold: 1.2     # lower in confirmed trending regime
 
     breakeven_atr: 1.0
 
@@ -104,8 +102,8 @@ sessions:
 
 filters:
   max_spread_pips: 2.0
-  min_volatility_percentile: 0.20
-  max_volatility_percentile: 0.80
+  min_volatility_percentile: 0.15
+  max_volatility_percentile: 0.85
 
 execution:
   order_comment: "HMM Bot"
@@ -140,5 +138,5 @@ hmm:
     1: "trending"
     2: "high_volatility"
   model_path: "models/hmm.pkl"
-  feature_lookback: 60000
-  retrain_interval: 10000
+  feature_lookback: 40000
+  retrain_interval: 8000

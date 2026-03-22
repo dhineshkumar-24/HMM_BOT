@@ -145,9 +145,9 @@ class WalkForwardEngine:
             if self.retrain_hmm:
                 hmm = HMMRegimeDetector(
                     n_states       = self.config.get("hmm", {}).get("n_components", 3),
-                    n_iter         = self.config.get("hmm", {}).get("n_iter", 100),
+                    n_iter         = self.config.get("hmm", {}).get("n_iter", 300),
                     n_seeds        = 3,
-                    confidence_thr = self.config.get("hmm", {}).get("confidence_threshold", 0.60),
+                    confidence_thr = self.config.get("hmm", {}).get("confidence_threshold", 0.65),
                 )
                 print(f"  → Training HMM on {len(df_train)} bars...")
                 hmm.fit(df_train)

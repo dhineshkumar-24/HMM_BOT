@@ -108,7 +108,7 @@ def main() -> None:
         n_iter        = CONFIG.get("hmm", {}).get("n_iter",             300),
         n_seeds       = 3,
         model_path    = CONFIG.get("hmm", {}).get("model_path",  "models/hmm.pkl"),
-        confidence_thr= CONFIG.get("hmm", {}).get("confidence_threshold", 0.60),
+        confidence_thr= CONFIG.get("hmm", {}).get("confidence_threshold", 0.65),
     )
 
     dd_monitor    = DrawdownMonitor(CONFIG, initial_capital=initial_capital)
@@ -129,7 +129,7 @@ def main() -> None:
     last_candle_time     = None
     last_heartbeat_min   = None
     candle_counter       = 0
-    retrain_interval     = CONFIG.get("hmm", {}).get("retrain_interval", 10000)
+    retrain_interval     = CONFIG.get("hmm", {}).get("retrain_interval", 8000)
 
     # ── 4. Main trading loop ───────────────────────────────────────────────────
     while True:

@@ -1,19 +1,18 @@
 """
-utils/features.py — HMM feature engineering pipeline.
+utils/features.py — Upgraded HMM feature engineering pipeline v4.0
 
-Computes and normalizes the 7-feature vector used by the HMM regime detector:
+13-feature regime discriminator + enhanced alpha features.
 
-    1. log_return           — per-bar log return
-    2. realized_vol         — rolling 20-bar realized volatility
-    3. vol_of_vol           — rolling std of realized_vol (vol regime changepoint)
-    4. autocorr             — lag-1 autocorrelation of returns
-    5. atr_norm             — ATR normalized by close price
-    6. volume_zscore        — z-score of tick volume
-    7. momentum             — n-bar rate-of-change of close price
+UPGRADE from v3.0:
+    - Added OU half-life estimator for adaptive MR exit timing
+    - Added skip-1 momentum (removes short-term reversal bias)
+    - Added ATR percentile rank for volatility-band filtering
+    - Added half-Kelly helper for position sizing
+    - Replaced naive alpha_mr with OU-based mean-reversion score
 
-NOTE: Normalization (StandardScaler) is handled inside HMMRegimeDetector.fit()
-and HMMRegimeDetector.predict(), not here. This module returns raw feature values
-so the scaler can be fit on training data and reused for live prediction.
+LEAKAGE AUDIT (all causal):
+    All rolling operations use data strictly from [t-window, t] inclusive.
+    No future data is referenced. All shift() calls use positive lags (backward).
 """
 
 from __future__ import annotations
@@ -21,76 +20,44 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
+
 # ─────────────────────────────────────────────────────────────────────────────
-# Feature column names — must stay stable between train & predict
+# Feature column registry — order MUST stay stable between train & predict
 # ─────────────────────────────────────────────────────────────────────────────
 FEATURE_COLS = [
-    "log_return",
-    "realized_vol",
-    "vol_of_vol",
-    "autocorr",
-    "atr_norm",
-    "momentum",
-    "skewness",
-    "kurtosis",
-    "drawdown_pct",
-    "ema_slope",
-    #"hurst_rolling",
-    #"volume_zscore",
-    #"volume_trend",
+    # Core
+    "log_return",          # 0  — bar-level return
+    "atr_norm",            # 1  — volatility level (HIGH_VOL primary)
+    "vol_ratio",           # 2  — vol10/vol50 expansion ratio (HIGH_VOL secondary)
+    "vol_of_vol_rel",      # 3  — relative vol-of-vol (HIGH_VOL tertiary)
+    # TRENDING discriminators
+    "efficiency_ratio",    # 4  — Kaufman ER: 1=trending, 0=choppy
+    "variance_ratio",      # 5  — VR deviation: +ve=trending, -ve=MR
+    "hurst_approx",        # 6  — Hurst H: >0.5=trending, <0.5=MR
+    "autocorr_multi",      # 7  — mean(autocorr, lags 1-5): +ve=trending
+    "momentum_scaled",     # 8  — vol-normalized momentum
+    "trend_consistency",   # 9  — fraction of bars moving in dominant direction
+    "ema_slope",           # 10 — normalized EMA50 directional slope
+    # Context
+    "drawdown_pct",        # 11 — rolling drawdown depth
+    "skewness",            # 12 — return skewness (asymmetric tail risk)
 ]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Individual feature calculators (vectorised Pandas, no loops)
+# Individual feature calculators (all vectorised, all causal)
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _log_returns(close: pd.Series) -> pd.Series:
-    """Bar-by-bar log return: ln(close_t / close_{t-1})."""
+    """Bar-by-bar log return: ln(close_t / close_{t-1}). Causal."""
     return np.log(close / close.shift(1))
-
-
-def _realized_volatility(
-    log_ret: pd.Series,
-    window: int = 20,
-) -> pd.Series:
-    """Rolling standard deviation of log returns (annualized-ready)."""
-    return log_ret.rolling(window=window).std()
-
-
-def _vol_of_vol(
-    realized_vol: pd.Series,
-    window: int = 20,
-) -> pd.Series:
-    """
-    Rolling standard deviation of realized volatility.
-
-    High vol-of-vol → regime likely transitioning.
-    Low vol-of-vol  → regime is stable.
-    """
-    return realized_vol.rolling(window=window).std()
-
-
-def _autocorrelation(
-    log_ret: pd.Series,
-    lag: int = 1,
-    window: int = 20,
-) -> pd.Series:
-    """
-    Rolling lag-1 autocorrelation of log returns.
-
-    Strongly negative → mean-reverting tendency.
-    Near zero          → random walk.
-    Strongly positive  → trending / momentum.
-    """
-    return log_ret.rolling(window=window).corr(log_ret.shift(lag))
 
 
 def _atr_normalized(df: pd.DataFrame, period: int = 14) -> pd.Series:
     """
-    Average True Range divided by close price.
-
-    Gives a dimensionless volatility measure comparable across price levels.
+    ATR / close price — dimensionless volatility.
+    Causal: only uses past bars via rolling mean.
+    HIGH_VOL primary discriminator.
     """
     prev_close = df["close"].shift(1)
     tr = pd.concat(
@@ -105,95 +72,245 @@ def _atr_normalized(df: pd.DataFrame, period: int = 14) -> pd.Series:
     return atr / df["close"]
 
 
-def _volume_zscore(volume: pd.Series, window: int = 20) -> pd.Series:
+def _vol_ratio(log_ret: pd.Series, fast: int = 10, slow: int = 50) -> pd.Series:
     """
-    Z-score of tick volume relative to its rolling mean and std.
-
-    Spikes indicate unusual market participation (news, breakout, etc.).
+    Ratio of fast to slow realized vol minus 1.
+    vol_ratio > 0: vol is expanding (HIGH_VOL indicator)
+    vol_ratio < 0: vol is contracting (quiet regime)
+    Causal rolling windows.
     """
-    roll_mean = volume.rolling(window=window).mean()
-    roll_std  = volume.rolling(window=window).std().replace(0, np.nan)
-    return (volume - roll_mean) / roll_std
+    vol_fast = log_ret.rolling(fast).std()
+    vol_slow = log_ret.rolling(slow).std().replace(0, np.nan)
+    return (vol_fast / vol_slow) - 1.0
 
 
-def _momentum(close: pd.Series, period: int = 10) -> pd.Series:
+def _vol_of_vol_relative(log_ret: pd.Series, window: int = 20) -> pd.Series:
     """
-    Rate-of-change momentum: (close_t / close_{t-period}) - 1.
-
-    Positive → upward momentum.
-    Negative → downward momentum.
-    Near-zero → ranging/consolidating.
+    Relative vol-of-vol: std(vol) / mean(vol).
+    Captures regime transitions. High = regime in flux.
+    Causal rolling.
     """
-    return (close / close.shift(period)) - 1
+    rvol = log_ret.rolling(window).std()
+    vov  = rvol.rolling(window).std()
+    mean_rvol = rvol.rolling(window).mean().replace(0, np.nan)
+    return vov / mean_rvol
 
 
-def _skewness(log_ret: pd.Series, window: int = 20) -> pd.Series:
-    """Rolling skewness of log returns (negative = downside tail risk)."""
-    return log_ret.rolling(window=window).skew()
+def _efficiency_ratio(close: pd.Series, window: int = 20) -> pd.Series:
+    """
+    Kaufman Efficiency Ratio (ER).
+
+    ER = |close[t] - close[t-window]| / sum(|close[i] - close[i-1]|, 0<i<=window)
+
+    Interpretation:
+        ER → 1.0: perfectly trending (directional movement dominates)
+        ER → 0.0: perfectly mean-reverting (all movement cancels)
+
+    This is the single best discriminator for TRENDING vs MEAN_REVERT.
+    Causal: only past bars used in numerator and denominator.
+    """
+    net_change = (close - close.shift(window)).abs()
+    bar_changes = close.diff().abs()
+    total_path  = bar_changes.rolling(window=window).sum().replace(0, np.nan)
+    er = net_change / total_path
+    return er.clip(0.0, 1.0)
 
 
-def _kurtosis(log_ret: pd.Series, window: int = 20) -> pd.Series:
-    """Rolling kurtosis of log returns (high = fat tails)."""
-    return log_ret.rolling(window=window).kurt()
+def _variance_ratio(log_ret: pd.Series, q: int = 5, window: int = 60) -> pd.Series:
+    """
+    Rolling Variance Ratio (Lo & MacKinlay 1988).
+
+    VR(q) = Var(q-period return) / (q × Var(1-period return))
+    We return (VR - 1) so the series is centered at 0:
+        > 0: trending
+        < 0: mean-reverting
+        = 0: random walk
+
+    Causal: uses only past returns up to the current bar.
+    """
+    var_1 = log_ret.rolling(window).var().replace(0, np.nan)
+    ret_q = log_ret.rolling(q).sum()
+    var_q = ret_q.rolling(window).var().replace(0, np.nan)
+
+    vr = (var_q / (q * var_1)) - 1.0
+    return vr.clip(-1.5, 1.5)
 
 
-def _drawdown_pct(close: pd.Series, window: int = 20) -> pd.Series:
-    """Percentage drawdown from recent rolling high."""
+def _hurst_approximate(log_ret: pd.Series, window: int = 60) -> pd.Series:
+    """
+    Rolling approximate Hurst Exponent via Rescaled Range (R/S) analysis.
+
+    We return (H - 0.5) so the series is centered at 0.
+    All calculations are causal (rolling windows).
+    """
+    short = max(10, window // 4)
+    long  = window
+
+    def rs(series: pd.Series, n: int) -> pd.Series:
+        def _rs_scalar(x):
+            if len(x) < 4 or x.std() == 0:
+                return np.nan
+            cumdev = np.cumsum(x - x.mean())
+            r = cumdev.max() - cumdev.min()
+            s = x.std()
+            return r / s if s > 0 else np.nan
+        return series.rolling(n).apply(_rs_scalar, raw=True)
+
+    rs_short = rs(log_ret, short)
+    rs_long  = rs(log_ret, long)
+
+    ratio = (rs_long / rs_short.replace(0, np.nan)).replace(0, np.nan)
+    log_ratio = np.log(ratio.clip(1e-8, None))
+    log_scale  = np.log(long / short)
+
+    hurst = (log_ratio / log_scale) - 0.5
+    return hurst.clip(-0.5, 0.5)
+
+
+def _autocorr_multi(
+    log_ret: pd.Series,
+    lags: list[int] = None,
+    window: int = 30,
+) -> pd.Series:
+    """
+    Mean of rolling autocorrelations at multiple lags [1, 2, 3, 5].
+    Causal: all lag-k uses shift(k), looking only backward.
+    """
+    if lags is None:
+        lags = [1, 2, 3, 5]
+
+    ac_series = []
+    for lag in lags:
+        ac = log_ret.rolling(window).corr(log_ret.shift(lag))
+        ac_series.append(ac)
+
+    ac_df  = pd.concat(ac_series, axis=1)
+    return ac_df.mean(axis=1).clip(-0.5, 0.5)
+
+
+def _momentum_scaled(
+    close: pd.Series,
+    log_ret: pd.Series,
+    short: int = 10,
+    long: int = 60,
+    vol_window: int = 20,
+) -> pd.Series:
+    """
+    Vol-normalized momentum.
+    Causal: pct_change and rolling std use only past data.
+    """
+    raw_mom = close.pct_change(long)
+    vol     = log_ret.rolling(vol_window).std().replace(0, np.nan)
+    scaled  = (raw_mom / vol).clip(-5, 5)
+    return scaled
+
+
+def _trend_consistency(close: pd.Series, window: int = 20) -> pd.Series:
+    """
+    Fraction of bars within the window moving in the DOMINANT direction.
+    Causal: only past bars used.
+    """
+    def _consistency(x):
+        if len(x) < 4:
+            return np.nan
+        net = x[-1] - x[0]
+        dominant = np.sign(net)
+        if dominant == 0:
+            return 0.5
+        bar_dirs = np.sign(np.diff(x))
+        return float((bar_dirs == dominant).mean())
+
+    return close.rolling(window).apply(_consistency, raw=True)
+
+
+def _ema_slope(close: pd.Series, span: int = 50, slope_window: int = 5) -> pd.Series:
+    """
+    Normalized EMA50 slope (price-relative %).
+    Causal: EWM uses past bars only with adjust=False.
+    """
+    ema    = close.ewm(span=span, adjust=False).mean()
+    lagged = close.shift(slope_window).replace(0, np.nan)
+    return ema.diff(slope_window) / lagged
+
+
+def _drawdown_pct(close: pd.Series, window: int = 30) -> pd.Series:
+    """Percentage drawdown from rolling high. Causal."""
     rolling_max = close.rolling(window=window).max()
     return (close - rolling_max) / rolling_max
 
 
-def _volume_trend(volume: pd.Series, close: pd.Series, window: int = 20) -> pd.Series:
-    """Rolling correlation between volume and close price."""
-    return volume.rolling(window=window).corr(close)
-
-
-def _ema_slope(close: pd.Series, span: int = 50) -> pd.Series:
-    """Normalized slope of the EMA50."""
-    ema = close.ewm(span=span, adjust=False).mean()
-    return ema.diff() / close.shift(1)
-
-
-def _hurst_rolling(close: pd.Series, window: int = 100) -> pd.Series:
-    """Rolling Hurst Exponent."""
-    from utils.indicators import compute_hurst
-    return compute_hurst(close)
+def _skewness(log_ret: pd.Series, window: int = 30) -> pd.Series:
+    """Rolling skewness of log returns (negative = downside tail). Causal."""
+    return log_ret.rolling(window=window).skew()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Public API
+# Public API — Main feature matrix builder
 # ─────────────────────────────────────────────────────────────────────────────
 
-def build_feature_matrix(df, vol_window=20, atr_period=14,
-                          autocorr_lag=1, mom_period=10):
+def build_feature_matrix(
+    df: pd.DataFrame,
+    atr_period:  int = 14,
+    vol_fast:    int = 10,
+    vol_slow:    int = 50,
+    er_window:   int = 20,
+    vr_q:        int = 5,
+    vr_window:   int = 60,
+    hurst_window: int = 60,
+    ac_window:   int = 30,
+    mom_long:    int = 60,
+    tc_window:   int = 20,
+) -> pd.DataFrame:
+    """
+    Build the 13-feature HMM regime discriminator matrix.
+    All features are causal (no look-ahead). NaN-producing warm-up rows
+    are dropped at the end.
+    """
     df = df.copy()
 
+    # ── Base return series ────────────────────────────────────────────────────
     log_ret = _log_returns(df["close"])
-    rvol    = _realized_volatility(log_ret, window=vol_window)
-    vov     = _vol_of_vol(rvol, window=vol_window)
-    ac      = _autocorrelation(log_ret, lag=autocorr_lag, window=vol_window)
-    atr_n   = _atr_normalized(df, period=atr_period)
-    mom     = _momentum(df["close"], period=mom_period)
-    skew    = _skewness(log_ret, window=vol_window)
-    kurt    = _kurtosis(log_ret, window=vol_window)
-    dd_pct  = _drawdown_pct(df["close"], window=vol_window)
-    ema_s   = _ema_slope(df["close"], span=50)
 
-    features = pd.DataFrame({
-        "log_return":   log_ret,
-        "realized_vol": rvol,
-        "vol_of_vol":   vov,
-        "autocorr":     ac,
-        "atr_norm":     atr_n,
-        "momentum":     mom,
-        "skewness":     skew,
-        "kurtosis":     kurt,
-        "drawdown_pct": dd_pct,
-        "ema_slope":    ema_s,
-    }, index=df.index)
+    # ── HIGH_VOL separators ───────────────────────────────────────────────────
+    atr_n      = _atr_normalized(df, period=atr_period)
+    vol_r      = _vol_ratio(log_ret, fast=vol_fast, slow=vol_slow)
+    vov_rel    = _vol_of_vol_relative(log_ret, window=vol_slow)
+
+    # ── TRENDING separators ───────────────────────────────────────────────────
+    er         = _efficiency_ratio(df["close"], window=er_window)
+    vr         = _variance_ratio(log_ret, q=vr_q, window=vr_window)
+    hurst      = _hurst_approximate(log_ret, window=hurst_window)
+    ac_multi   = _autocorr_multi(log_ret, lags=[1, 2, 3, 5], window=ac_window)
+    mom_s      = _momentum_scaled(df["close"], log_ret, long=mom_long, vol_window=vol_slow)
+    tc         = _trend_consistency(df["close"], window=tc_window)
+    ema_s      = _ema_slope(df["close"], span=50, slope_window=5)
+
+    # ── Context features ─────────────────────────────────────────────────────
+    dd_pct     = _drawdown_pct(df["close"], window=30)
+    skew       = _skewness(log_ret, window=30)
+
+    # ── Assemble ──────────────────────────────────────────────────────────────
+    features = pd.DataFrame(
+        {
+            "log_return":       log_ret,
+            "atr_norm":         atr_n,
+            "vol_ratio":        vol_r,
+            "vol_of_vol_rel":   vov_rel,
+            "efficiency_ratio": er,
+            "variance_ratio":   vr,
+            "hurst_approx":     hurst,
+            "autocorr_multi":   ac_multi,
+            "momentum_scaled":  mom_s,
+            "trend_consistency": tc,
+            "ema_slope":        ema_s,
+            "drawdown_pct":     dd_pct,
+            "skewness":         skew,
+        },
+        index=df.index,
+    )
 
     features.replace([np.inf, -np.inf], np.nan, inplace=True)
-    features.dropna(inplace=True)
+    features = features.dropna()
     return features
 
 
@@ -201,93 +318,171 @@ def get_feature_names() -> list[str]:
     """Return the canonical ordered list of feature column names."""
     return list(FEATURE_COLS)
 
+
 # ─────────────────────────────────────────────────────────────────────────────
-# Statistical Alpha Feature Matrix (NEW)
+# NEW v4.0: Ornstein-Uhlenbeck Half-Life Estimator
+# ─────────────────────────────────────────────────────────────────────────────
+
+def ou_half_life(close: pd.Series, window: int = 60) -> pd.Series:
+    """
+    Rolling Ornstein-Uhlenbeck half-life of mean reversion.
+
+    Model: dS = θ(μ - S)dt + σdW
+    Estimation: AR(1) regression  S_t - S_{t-1} = α + β·S_{t-1} + ε
+    Half-life = -log(2) / log(1 + β)   [in bars]
+
+    Interpretation:
+        half_life < 20:   fast mean reversion (good MR signal)
+        half_life 20-60:  moderate MR (usable)
+        half_life > 60:   slow / trending (avoid MR trades)
+
+    Causal: only uses past bars in the rolling window.
+    """
+    def _hl_scalar(x):
+        if len(x) < 10:
+            return np.nan
+        y = np.diff(x)             # S_t - S_{t-1}
+        x_lag = x[:-1]             # S_{t-1}
+        # OLS: y = alpha + beta * x_lag
+        n = len(y)
+        x_mean = x_lag.mean()
+        y_mean = y.mean()
+        cov_xy = np.sum((x_lag - x_mean) * (y - y_mean))
+        var_x  = np.sum((x_lag - x_mean) ** 2)
+        if var_x < 1e-20:
+            return np.nan
+        beta = cov_xy / var_x
+        if beta >= 0:
+            return np.nan  # not mean-reverting
+        # Half-life = -log(2) / log(1 + beta)
+        arg = 1.0 + beta
+        if arg <= 0:
+            return np.nan
+        hl = -np.log(2) / np.log(arg)
+        return max(1.0, min(hl, 200.0))  # clip to reasonable range
+
+    return close.rolling(window).apply(_hl_scalar, raw=True)
+
+
+def atr_percentile_rank(df: pd.DataFrame, period: int = 14, lookback: int = 252 * 12) -> pd.Series:
+    """
+    ATR percentile rank over long lookback window (0-1 scale).
+    Used for volatility-band filtering: trade only in P20-P80.
+
+    Causal: rolling rank uses only past data.
+    """
+    prev_close = df["close"].shift(1)
+    tr = pd.concat(
+        [
+            (df["high"] - df["low"]).abs(),
+            (df["high"] - prev_close).abs(),
+            (df["low"]  - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    atr = tr.rolling(period).mean()
+
+    # Rolling percentile rank (causal)
+    actual_lookback = min(lookback, len(atr))
+    rank = atr.rolling(actual_lookback, min_periods=100).rank(pct=True)
+    return rank
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NEW v4.0: Enhanced Alpha Features for MomentumStrategy
 # ─────────────────────────────────────────────────────────────────────────────
 
 def build_alpha_features(df: pd.DataFrame, vwap_window: int = 20, mom_period: int = 60) -> pd.DataFrame:
     """
-    Regime-adaptive alpha features.
-    Mean reversion alpha:  fade short-term overextension vs VWAP
-    Momentum alpha:        ride directional 1-hour order flow
-    Vol regime:            classify current volatility environment
+    Regime-adaptive alpha features for MomentumStrategy.
+
+    v4.0 Enhancements:
+        - alpha_mr now uses OU-adjusted Z-score (not just negated Z)
+        - alpha_mom uses skip-1 momentum (academic best practice)
+        - Added ou_hl (half-life) for adaptive exit timing
+        - Added atr_pctile for volatility-band filtering
     """
     close   = df["close"]
     high    = df["high"]
     low     = df["low"]
     log_ret = np.log(close / close.shift(1))
 
-    # ── Vol horizons ──────────────────────────────────────────────────────────
     vol10 = log_ret.rolling(10).std()
     vol50 = log_ret.rolling(50).std()
 
-    # ── MEAN REVERSION ALPHA ──────────────────────────────────────────────────
-    # VWAP-based Z-score: price vs its N-bar mean, scaled by recent vol
-    # Positive = price ABOVE mean = overextended UP = SELL candidate
-    # Negative = price BELOW mean = overextended DOWN = BUY candidate
-    roll_mean = close.rolling(vwap_window).mean()
-    roll_std  = close.rolling(vwap_window).std().replace(0, np.nan)
-    z_vwap    = (close - roll_mean) / roll_std          # standard z-score
-    alpha_mr  = -z_vwap                                 # invert: positive = BUY
-    # Scale: alpha_mr > 1.5 means price is 1.5 sigma below mean = strong BUY setup
+    # ── Z-score (standard) ────────────────────────────────────────────────────
+    roll_mean = close.rolling(20).mean()
+    roll_std  = close.rolling(20).std().replace(0, np.nan)
+    z_vwap    = (close - roll_mean) / roll_std
 
-    # ── MOMENTUM ALPHA ────────────────────────────────────────────────────────
-    # Time-series momentum: cumulative N-bar sign
-    # Use sign of returns summed — avoids magnitude domination
+    # ── OU-Adjusted MR Alpha ─────────────────────────────────────────────────
+    # Standard Z-score weighted by OU half-life confidence.
+    # Short half-life = high confidence in mean reversion = stronger signal.
+    ou_hl = ou_half_life(close, window=60)
+    ou_hl_bounded = ou_hl.clip(5, 100)  # bound for numerical stability
+
+    # Weight: higher when OU half-life is short (strong MR regime)
+    # hl_weight ∈ [0.5, 2.0]: short hl → high weight, long hl → low weight
+    hl_weight = (30.0 / ou_hl_bounded).clip(0.5, 2.0)
+    alpha_mr = -z_vwap * hl_weight
+
+    # ── Skip-1 Momentum ──────────────────────────────────────────────────────
+    # Skip most recent bar to avoid short-term reversal contamination.
+    # Academic basis: Jegadeesh & Titman 1993, Novy-Marx 2012.
     r5  = close.pct_change(5)
     r20 = close.pct_change(20)
-    r_mom = close.pct_change(mom_period)
-    # Normalize by volatility so it's comparable across calm and volatile periods
-    alpha_mom = r_mom / vol50.replace(0, np.nan)
-    # Clip to ±5 to prevent extreme momentum values from dominating
+    # Skip-1: return from t-60 to t-1 (exclude most recent bar)
+    r60_skip1 = (close.shift(1) / close.shift(60) - 1.0)
+    alpha_mom = r60_skip1 / vol50.replace(0, np.nan)
     alpha_mom = alpha_mom.clip(-5, 5)
 
-    # ── VOL REGIME ────────────────────────────────────────────────────────────
-    vol_regime = (vol10 / vol50.replace(0, np.nan)) - 1.0  # >0 = expanding vol
+    # Legacy r60 for backward compat
+    r60 = close.pct_change(60)
 
-    # ── TREND STRENGTH ────────────────────────────────────────────────────────
-    # Rolling autocorrelation: positive = trending, negative = mean-reverting
+    vol_regime = (vol10 / vol50.replace(0, np.nan)) - 1.0
     trend_strength = log_ret.rolling(20).corr(log_ret.shift(1))
 
-    # ── COMBINED — not used directly, regime routing selects which alpha ──────
-    # This is a fallback composite only used if regime is unknown
-    combined = alpha_mr  # default to mean reversion
-
-    # ── EXHAUSTION DETECTOR ───────────────────────────────────────────────────
-    # Problem: a large 600-pip move looks like "momentum" but may be exhausted
-    # Solution: compare RECENT momentum to LONGER-TERM momentum
-    # If recent (20-bar) has slowed vs long-term (60-bar) → exhaustion signal
+    combined = alpha_mr
 
     r20_norm  = r20 / vol50.replace(0, np.nan)
     r20_norm  = r20_norm.clip(-5, 5)
+    exhaustion_long  = alpha_mom - r20_norm
+    exhaustion_short = r20_norm - (close.pct_change(5) / vol10.replace(0, np.nan)).clip(-5, 5)
 
-    # Exhaustion = recent momentum has decelerated vs 60-bar trend
-    # Positive exhaustion_long = was going up, slowing down = sell setup
-    exhaustion_long  = alpha_mom - r20_norm   # > 0 means trend slowing (was up, now flat)
-    exhaustion_short = r20_norm - (close.pct_change(5) / vol10.replace(0, np.nan)).clip(-5,5)
-
-    # ── MEAN REVERSION QUALITY ────────────────────────────────────────────────
-    # How far is price from equilibrium RELATIVE to current vol?
-    # This is the purest mean reversion entry quality score
-    # |z_vwap| > 2 AND vol_regime < 0 (shrinking vol) = ideal MR setup
     mr_quality = np.abs(z_vwap) * (1.0 - vol_regime.clip(-1, 1))
-    # mr_quality > 2.0 = high quality mean reversion setup
 
-    result = pd.DataFrame({
-    "r5":              r5,
-    "r20":             r20,
-    "r60":             r_mom,
-    "vol10":           vol10,
-    "vol50":           vol50,
-    "z_vwap":          z_vwap,
-    "trend_strength":  trend_strength,
-    "vol_regime":      vol_regime,
-    "alpha_mr":        alpha_mr,
-    "alpha_mom":       alpha_mom,
-    "exhaustion_long": exhaustion_long,   # NEW
-    "mr_quality":      mr_quality,        # NEW
-    "combined_alpha":  combined,
-    }, index=df.index)
+    # ── ATR for the alpha frame ───────────────────────────────────────────────
+    prev_close = close.shift(1)
+    tr = pd.concat(
+        [
+            (high - low).abs(),
+            (high - prev_close).abs(),
+            (low  - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    atr_14 = tr.rolling(14).mean()
+
+    result = pd.DataFrame(
+        {
+            "r5":              r5,
+            "r20":             r20,
+            "r60":             r60,
+            "vol10":           vol10,
+            "vol50":           vol50,
+            "z_vwap":          z_vwap,
+            "trend_strength":  trend_strength,
+            "vol_regime":      vol_regime,
+            "alpha_mr":        alpha_mr,
+            "alpha_mom":       alpha_mom,
+            "exhaustion_long": exhaustion_long,
+            "mr_quality":      mr_quality,
+            "combined_alpha":  combined,
+            "ou_half_life":    ou_hl,
+            "atr_alpha":       atr_14,
+        },
+        index=df.index,
+    )
 
     result.replace([np.inf, -np.inf], np.nan, inplace=True)
     return result

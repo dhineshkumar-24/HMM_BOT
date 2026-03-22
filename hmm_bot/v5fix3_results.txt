@@ -1,0 +1,37 @@
+﻿============================================================
+  v5.0 FIX3 ù EXIT ARCHITECTURE REDESIGN
+============================================================
+
+Total: 133 | Wins: 50 | Losses: 83
+Win rate: 37.6%
+Net profit: $-995.00
+Avg win: $19.18
+Avg loss: $-23.54
+Win/Loss ratio: 0.81
+Profit factor: 0.49
+
+Exit reasons:
+exit_reason
+SL      64
+TIME    60
+TP       9
+
+SL dist: min=0.2 P25=2.9 med=15.5 max=24.0
+  <5pips: 25 (39%)
+  <15pips: 31 (48%)
+  >=15pips: 33 (52%)
+
+  TP: 9 trades | WR=100.0% | Avg PnL=$63.55
+
+  TIME: 60 trades | WR=28.3% | Avg PnL=$-9.59
+
+  SL: 64 trades | WR=37.5% | Avg PnL=$-15.49
+
+=== KEY METRICS ===
+  total_trades: 133.0000
+  win_rate: 0.3759
+  net_profit: -995.0029
+  profit_factor: 0.4908
+  sharpe: -4.2957
+  max_drawdown: 0.1116
+  calmar: -0.8917
