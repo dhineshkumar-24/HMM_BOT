@@ -129,7 +129,7 @@ def main() -> None:
     last_candle_time     = None
     last_heartbeat_min   = None
     candle_counter       = 0
-    retrain_interval     = CONFIG.get("hmm", {}).get("retrain_interval", 8000)
+    retrain_interval     = CONFIG.get("hmm", {}).get("retrain_interval", 1000)
 
     # ── 4. Main trading loop ───────────────────────────────────────────────────
     while True:
