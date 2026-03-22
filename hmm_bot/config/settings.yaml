@@ -26,12 +26,13 @@ strategy:
   rsi_period: 14
   atr_period: 14
   adx_period: 10
-  # Base feature lookbacks
-  vwap_window: 20
-  momentum:
-    mom_period: 24               # 24 hours of momentum instead of 60
+  vwap_window: 21
+  vwap_window_slow: 50
+  atr_avg_window: 50         # NEW: moving average window for ATR
+  ou_window: 60              # NEW: OU half-life calculation window
+  slope_window: 5            # NEW: window for calculating EMA slopes
+  hurst_threshold: 0.45
 
-  # Alpha weights — v5.0: focused deeply on combined multi-factor edge
   alpha:
     threshold_percentile: 65
     tp_vol_mult: 2.0             # H1 targets 2.0x ATR cleanly
@@ -40,16 +41,22 @@ strategy:
     min_edge_pips: 0.00015
     min_combined_score: 1.50
     combined_threshold: 0.40
-    mr_mom_filter: 1.0           
-    trend_pullback: 0.2          
+    # NEW: Alpha feature lookback windows
+    vol_fast: 10
+    vol_slow: 50
+    z_window: 20
+    mom_fast: 5
+    mom_slow: 20
+    mom_long: 60
 
   # Mean Reversion
   mean_reversion:
-    z_score_trigger: 1.5         # Lowered to capture realistic bounce zones
-    z_slow_trigger: 1.0
-    z_score_exit: 0.0            # Exit exactly at mean
-    rsi_overbought: 65
-    rsi_oversold:   35
+    ema_period: 50               # NEW: EMA period for flat check
+    z_score_trigger: 2.0         # v5.0: raised from 1.8 → 2.0 (higher conviction)
+    z_slow_trigger: 1.2          # v5.0: raised from 1.0 → 1.2
+    z_score_exit: 0.0
+    rsi_overbought: 65           # v5.0: was 60 → 65 (need stronger signal)
+    rsi_oversold:   35           # v5.0: was 40 → 35
     ema_slope_flat: 0.0005
     adx_max: 20
     sl_atr_mult: 2.0             # Fat stop loss to endure noise
