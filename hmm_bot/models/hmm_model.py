@@ -27,10 +27,13 @@ from utils.logger import setup_logger
 
 logger = setup_logger("HMMModel")
 
-# Regime label constants — must match settings.yaml hmm.regime_names
+# Regime label constants — FIX L1: Renamed REGIME_NOISY → REGIME_HIGH_VOL
+# to match core/hmm_model.py's canonical names
+# The LIVE implementation is in core/hmm_model.py (HMMRegimeDetector)
+# This file is a PLACEHOLDER STUB — do not use in production
 REGIME_MEAN_REVERT = 0
 REGIME_TRENDING    = 1
-REGIME_NOISY       = 2
+REGIME_HIGH_VOL    = 2   # was REGIME_NOISY — renamed for consistency
 
 
 class HMMModel:
@@ -51,7 +54,7 @@ class HMMModel:
         hmm_cfg = config.get("hmm", {})
 
         self.n_components       = hmm_cfg.get("n_components", 3)
-        self.n_iter             = hmm_cfg.get("n_iter", 150)
+        self.n_iter             = hmm_cfg.get("n_iter", 300)
         self.covariance_type    = hmm_cfg.get("covariance_type", "full")
         self.model_path         = hmm_cfg.get("model_path", "models/hmm_state.pkl")
         self.confidence_threshold = hmm_cfg.get("confidence_threshold", 0.65)

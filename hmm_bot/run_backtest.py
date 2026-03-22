@@ -205,9 +205,9 @@ def main():
     if not args.no_hmm:
         hmm = HMMRegimeDetector(
             n_states       = CONFIG.get("hmm", {}).get("n_components", 3),
-            n_iter         = CONFIG.get("hmm", {}).get("n_iter", 100),
+            n_iter         = CONFIG.get("hmm", {}).get("n_iter", 300),
             n_seeds        = 3,
-            confidence_thr = CONFIG.get("hmm", {}).get("confidence_threshold", 0.62),
+            confidence_thr = CONFIG.get("hmm", {}).get("confidence_threshold", 0.65),
             model_path     = CONFIG.get("hmm", {}).get("model_path", "models/hmm.pkl"),
         )
         if args.load_hmm:
@@ -236,8 +236,8 @@ def _run_single_backtest(df, CONFIG, hmm, args, symbol):
     """Standard chronological backtest with optional HMM training."""
     n          = len(df)
     # Pull split from config if not overridden by CLI
-    cfg_split  = CONFIG.get("backtest", {}).get("train_split", 0.70)
-    split_frac = args.train_frac if args.train_frac != 0.7 else cfg_split
+    cfg_split  = CONFIG.get("backtest", {}).get("train_split", 0.80)
+    split_frac = args.train_frac if args.train_frac != 0.8 else cfg_split
     split      = int(n * split_frac)
 
     df_train = df.iloc[:split].reset_index(drop=True)
@@ -246,24 +246,15 @@ def _run_single_backtest(df, CONFIG, hmm, args, symbol):
     print(f"\nDate range : {df['time'].iloc[0].date()} → {df['time'].iloc[-1].date()}")
     print(f"Train/Test : {split_frac:.0%} / {1-split_frac:.0%}")
 
-    # Train HMM on training portion — resample M5 train data to H1
-    # Never fetch live MT5 data here — that would cause future data leakage
+    # FIX C2: Train HMM directly on raw M5 training data.
+    # Do NOT resample to H1 or synthesize OHLC — that produces ATR=0
+    # and vol=0, making the StandardScaler fit on degenerate features.
+    # Real M5 data has non-zero ATR, volume, and autocorrelation.
     if hmm is not None and not hmm.is_trained and args.train_hmm:
-        print("Training HMM on training set (resampled to H1)...")
-        df_train_h1 = (
-            df_train.set_index("time")["close"]
-            .resample("1h")
-            .last()
-            .dropna()
-            .reset_index()
-        )
-        df_train_h1["open"]        = df_train_h1["close"]
-        df_train_h1["high"]        = df_train_h1["close"]
-        df_train_h1["low"]         = df_train_h1["close"]
-        df_train_h1["tick_volume"] = 1
-        hmm.fit(df_train_h1)
+        print(f"Training HMM on {len(df_train):,} M5 bars (raw OHLCV)...")
+        hmm.fit(df_train)   # pass real M5 data directly
         hmm.save()
-        print(f"HMM trained on {len(df_train_h1):,} H1 bars from train set only.")
+        print(f"HMM trained on {len(df_train):,} real M5 bars from train set only.")
 
     router = StrategyRouter(CONFIG)
     result = run_backtest(

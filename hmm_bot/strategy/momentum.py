@@ -1,9 +1,27 @@
 """
-strategy/momentum.py — Regime-Adaptive Alpha Strategy.
+strategy/momentum.py — Institutional Momentum Strategy v5.0
 
-MEAN_REVERT regime  → fade short-term overextension (z_vwap signal)
-TRENDING regime     → ride 1-hour momentum on pullbacks (alpha_mom signal)
-HIGH_VOL regime     → reduce size, still trade with mean reversion only
+CRITICAL FIXES from v4.0 backtest results:
+    ROOT CAUSE: 86% SL hit rate with 5-pip median SL on EURUSD M5.
+    The SL was within the noise+spread range, causing systematic losses.
+
+v5.0 — Complete Redesign for Precision Over Frequency:
+
+    1. MINIMUM 15-pip SL (was 10-pip). EURUSD M5 noise floor is ~8 pips.
+       SL must be ABOVE noise floor to avoid random SL triggers.
+    2. Target RR 1:2 minimum, NOT 1:4+ (which was causing <5% TP hit rate)
+    3. Multi-timeframe momentum confirmation (not just alpha_mom)
+    4. Volatility-normalized entry threshold (higher bar in high-vol)
+    5. Trend strength gating via ADX + DI separation
+    6. Strict directional bias enforcement
+    7. Post-entry momentum confirmation (bar must close in direction)
+    8. Anti-noise: skip if ATR < 0.6× average (too quiet = spread dominates)
+
+Performance targets:
+    Win Rate:      45-55%
+    Profit Factor: > 1.3
+    Sharpe:        > 1.5
+    Max DD:        < 15%
 """
 
 from __future__ import annotations
@@ -13,41 +31,114 @@ import pandas as pd
 from typing import Optional
 
 from strategy.strategy_base import StrategyBase
-from utils.features         import build_alpha_features
-from utils.logger           import setup_logger
-from core.hmm_model         import (
-    REGIME_MEAN_REVERT,
-    REGIME_TRENDING,
-    REGIME_HIGH_VOL,
+from core.hmm_model         import REGIME_MEAN_REVERT, REGIME_TRENDING, REGIME_HIGH_VOL
+from utils.indicators       import (
+    compute_vwap,
+    compute_atr,
+    compute_rsi,
+    compute_ema,
+    compute_ema_slope,
+    compute_adx,
 )
+from utils.features          import build_alpha_features
+from utils.logger import setup_logger
 
-logger = setup_logger("MomentumStrategy")
-
-ACTIVE_SESSIONS = ("london", "newyork", "asian")
+logger = setup_logger("Momentum")
 
 
 class MomentumStrategy(StrategyBase):
-    """Regime-adaptive strategy."""
+    """
+    Precision momentum strategy designed for low-noise, high-quality entries.
+    v5.0: Wider SL above noise floor, tighter TP for achievable RR.
+    """
 
     def __init__(self, config: dict):
-        self.config  = config
-        alpha_cfg    = config.get("strategy", {}).get("alpha", {})
+        self.config = config
+        s   = config["strategy"]
+        mom = s["momentum"]
 
-        self.tp_vol_mult        = alpha_cfg.get("tp_vol_mult", 6.0)
-        self.sl_vol_mult        = alpha_cfg.get("sl_vol_mult", 4.0)
-        self.min_edge_over_cost = alpha_cfg.get("min_edge_pips", 0.00015)
-        self.min_combined_score = alpha_cfg.get("min_combined_score", 1.80)
+        # Shared
+        self.rsi_period       = s["rsi_period"]
+        self.atr_period       = s["atr_period"]
+        self.adx_period       = s["adx_period"]
+
+        # Momentum-specific
+        self.adx_min          = mom.get("adx_min", 22)    # v5.0: raised from 20
+        self.di_separation    = mom.get("di_separation", 5)  # NEW: min DI+/DI- gap
+        self.ema_period_fast  = mom.get("ema_period_fast", 21)
+        self.ema_period_slow  = mom.get("ema_period_slow", 50)
+        self.ema_period_base  = mom.get("ema_period_base", 100)
+        self.min_rr           = mom.get("min_rr", 2.0)    # v5.0: strict 1:2 minimum
+
+        # v5.0: SL/TP calibrated for EURUSD M5 noise floor
+        # EURUSD M5 noise = ~8 pips. SL must be > noise to survive.
+        self.sl_atr_mult      = mom.get("sl_atr_mult", 2.0)     # ~15-20 pips
+        self.tp_atr_mult      = mom.get("tp_atr_mult", 3.0)     # v5.0: 3× ATR (was 4× → only 7% TP hit)
+        self.trail_atr_mult   = mom.get("trail_atr_mult", 2.5)
+        self.min_sl_pips      = mom.get("min_sl_pips", 0.00150)  # v5.0: 15-pip FLOOR (was 10)
+        self.max_sl_pips      = mom.get("max_sl_pips", 0.00400)  # 40-pip ceiling
+
+        # Skip-1 momentum thresholds
+        self.mom_threshold    = mom.get("mom_threshold", 1.5)    # v5.0: raised from 1.0
+        self.mom_trend_threshold = mom.get("mom_trend_threshold", 1.2)   # trending threshold
+
+        self.min_gap          = s.get("signal", {}).get("min_gap", 0.50)  # v5.0: raised
+        self.cooling_bars     = mom.get("cooling_bars", 6)       # v5.0: longer cooling
+        self.min_atr_ratio    = mom.get("min_atr_ratio", 0.6)   # NEW: anti-noise filter
+
+        # RSI limits to avoid chasing overextended moves
+        self.rsi_ob = mom.get("rsi_overbought", 70)
+        self.rsi_os = mom.get("rsi_oversold", 30)
+
+        # Internal state
+        self._last_sl_bar: dict[str, int] = {"BUY": -999, "SELL": -999}
+
         logger.info(
-            f"AlphaStrategy ready | "
-            f"Threshold: 70th percentile | "
-            f"TP={self.tp_vol_mult}x vol | SL={self.sl_vol_mult}x vol"
+            f"MomentumStrategy v5.0 | ADX>={self.adx_min} | "
+            f"SL={self.sl_atr_mult}xATR (floor={self.min_sl_pips*10000:.0f}pips) | "
+            f"TP={self.tp_atr_mult}xATR | min_RR={self.min_rr} | "
+            f"mom_thr={self.mom_threshold}"
         )
 
     def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        df   = df.copy()
-        feats = build_alpha_features(df)
-        for col in feats.columns:
-            df[col] = feats[col]
+        """Enrich raw OHLCV with momentum indicators and alpha features."""
+        df = df.copy()
+
+        log_ret       = np.log(df["close"] / df["close"].shift(1))
+        df["returns"] = log_ret
+
+        # ── ATR ───────────────────────────────────────────────────────────────
+        df["atr"] = compute_atr(df, period=self.atr_period)
+        # Rolling average ATR for noise filter
+        df["atr_avg"] = df["atr"].rolling(50).mean()
+
+        # ── RSI ───────────────────────────────────────────────────────────────
+        df["rsi"] = compute_rsi(df["close"], period=self.rsi_period)
+
+        # ── EMAs (fast / slow / base) ─────────────────────────────────────────
+        df["ema_fast"]  = compute_ema(df["close"], period=self.ema_period_fast)
+        df["ema_slow"]  = compute_ema(df["close"], period=self.ema_period_slow)
+        df["ema_base"]  = compute_ema(df["close"], period=self.ema_period_base)
+
+        df["ema50_slope"] = compute_ema_slope(
+            df["close"], ema_period=self.ema_period_slow, slope_window=5
+        )
+
+        # ── ADX ───────────────────────────────────────────────────────────────
+        adx_df        = compute_adx(df, period=self.adx_period)
+        df["adx"]     = adx_df["adx"]
+        df["plus_di"] = adx_df["plus_di"]
+        df["minus_di"] = adx_df["minus_di"]
+
+        # ── VWAP ──────────────────────────────────────────────────────────────
+        df["vwap"] = compute_vwap(df, window=21)
+
+        # ── Alpha features (skip-1 momentum) ─────────────────────────────────
+        alpha_df = build_alpha_features(df)
+        for col in alpha_df.columns:
+            if col not in df.columns:
+                df[col] = alpha_df[col]
+
         return df
 
     def generate_signal(
@@ -55,162 +146,130 @@ class MomentumStrategy(StrategyBase):
         df:      pd.DataFrame,
         regime:  Optional[int] = None,
         session: Optional[str] = None,
-        bias_4h:   str = "NEUTRAL",
+        bias_4h: str = "NEUTRAL",
+        bar_idx: int = 0,
     ) -> Optional[dict]:
+        """
+        Generate HIGH-PRECISION momentum signal.
 
+        v5.0 entry requirements (ALL must pass):
+            1. ADX >= 22 (confirmed trend)
+            2. DI separation >= 5 (clear directional bias in market)
+            3. |alpha_mom| >= threshold (strong momentum signal)
+            4. EMA alignment (fast vs slow confirms direction)
+            5. RSI not overextended (avoid chasing)
+            6. ATR > 0.6× average (enough volatility for edge to exist)
+            7. Bar confirmation (prev bar closes in trade direction)
+            8. 4H bias alignment (trend-aligned only)
+            9. Post-SL cooling period (avoid revenge trading)
+            10. Signal gap > 0.50 (must exceed strong threshold)
+        """
         if len(df) < 120:
             return None
 
-        prev = df.iloc[-2]
+        prev   = df.iloc[-2]
+        prev2  = df.iloc[-3] if len(df) >= 3 else prev
+        entry  = float(df.iloc[-1]["close"])
 
-        alpha_mr  = prev.get("alpha_mr",  float("nan"))
-        alpha_mom = prev.get("alpha_mom", float("nan"))
-        vol10     = prev.get("vol10",     float("nan"))
-        z_vwap    = prev.get("z_vwap",    float("nan"))
-        vol_regime = prev.get("vol_regime", float("nan"))
-        mr_quality      = prev.get("mr_quality",      float("nan"))
-        exhaustion_long = prev.get("exhaustion_long", float("nan"))
+        # ── Extract indicators ────────────────────────────────────────────────
+        atr       = float(prev.get("atr",        0.0))
+        atr_avg   = float(prev.get("atr_avg",    0.0))
+        adx       = float(prev.get("adx",        0.0))
+        rsi       = float(prev.get("rsi",        50.0))
+        slope     = float(prev.get("ema50_slope", 0.0))
+        alpha_mom = float(prev.get("alpha_mom",   0.0))
+        alpha_mr  = float(prev.get("alpha_mr",    0.0))
+        z_vwap    = float(prev.get("z_vwap",      0.0))
+        plus_di   = float(prev.get("plus_di",    0.0))
+        minus_di  = float(prev.get("minus_di",   0.0))
+        ema_fast  = float(prev.get("ema_fast",   0.0))
+        ema_slow  = float(prev.get("ema_slow",   0.0))
+        ema_base  = float(prev.get("ema_base",   0.0))
 
-        if any(np.isnan(v) for v in [alpha_mr, alpha_mom, vol10, z_vwap]):
+        bar_open  = float(prev.get("open",  0.0))
+        bar_close = float(prev.get("close", 0.0))
+
+        if atr <= 0 or np.isnan(atr):
             return None
 
-        if vol10 <= 0:
+        # ── FILTER 1: ADX trend confirmation ──────────────────────────────────
+        if adx < self.adx_min:
             return None
 
-        entry = float(df.iloc[-1]["close"])
-        price = float(prev["close"])
-        vol_price = vol10 * price
-
-        if vol_price < self.min_edge_over_cost:
+        # ── FILTER 2: Anti-noise — enough volatility for edge to exist ────────
+        # If ATR is too low, spreads dominate and there's no room for profit
+        if atr_avg > 0 and atr < atr_avg * self.min_atr_ratio:
             return None
 
-        # ── REGIME-ADAPTIVE SIGNAL SELECTION ─────────────────────────────────
-        direction = None
-        signal_strength = 0.0
-        mode = "mean_rev"
+        # ── FILTER 3: DI separation — clear directional bias in market ────────
+        di_gap = abs(plus_di - minus_di)
+        if di_gap < self.di_separation:
+            return None
 
-        if regime == REGIME_MEAN_REVERT or regime is None:
-            # In mean-reverting regime: fade Z-score extremes
-            # Only when 60-min momentum is NOT strongly opposing
-            mode = "mean_rev"
+        # ── Determine direction from DI + momentum alignment ──────────────────
+        direction  = None
+        signal_gap = 0.0
+        mom_thr    = self.mom_threshold
 
-            # if session == "newyork":  
-            #     return None
+        # Use lower threshold when trending regime is confirmed
+        if regime == REGIME_TRENDING:
+            mom_thr = self.mom_trend_threshold
 
-            mr_threshold = 2.5 if session == "newyork" else 1.5
+        # LONG conditions: DI+ > DI-, positive momentum, EMA aligned
+        if (plus_di > minus_di and
+                alpha_mom > mom_thr and
+                slope > 0 and
+                ema_fast > ema_slow):
+            direction = "BUY"
+            signal_gap = alpha_mom - mom_thr
 
-            if alpha_mr > mr_threshold and alpha_mom > -3.0:
-                direction = "BUY"
-                signal_strength = min(alpha_mr, 5.0)
+        # SHORT conditions: DI- > DI+, negative momentum, EMA aligned
+        elif (minus_di > plus_di and
+                alpha_mom < -mom_thr and
+                slope < 0 and
+                ema_fast < ema_slow):
+            direction = "SELL"
+            signal_gap = abs(alpha_mom) - mom_thr
 
-            elif alpha_mr < -mr_threshold and alpha_mom < 3.0:
-                direction = "SELL"
-                signal_strength = min(abs(alpha_mr), 5.0)
+        if direction is None:
+            return None
 
-            if alpha_mr > 3.0 and alpha_mom > -2.5:
-                # Price extended DOWN (z_vwap <-2), not in downtrend → BUY
-                direction = "BUY"
-                signal_strength = min(alpha_mr, 5.0)
+        # ── FILTER 4: Signal gap must be strong ───────────────────────────────
+        if signal_gap < self.min_gap:
+            return None
 
-            elif alpha_mr < -3.0 and alpha_mom < 2.5:  
-                # Price extended UP (z_vwap > +2), not in uptrend → SELL
-                direction = "SELL"
-                signal_strength = min(abs(alpha_mr), 5.0)
+        # ── FILTER 5: RSI — don't chase overextended moves ───────────────────
+        if direction == "BUY" and rsi > self.rsi_ob:
+            return None
+        if direction == "SELL" and rsi < self.rsi_os:
+            return None
 
-        elif regime == REGIME_TRENDING:
-            mode = "momentum_pullback"
-
-            # ── EMA direction filter — fast EMAs for M1 ────────────────
-            close_series = df["close"]
-            ema21  = close_series.ewm(span=21,  adjust=False).mean()
-            ema50  = close_series.ewm(span=50,  adjust=False).mean()
-            ema100 = close_series.ewm(span=100, adjust=False).mean()
-
-            # All three must agree on direction
-            trend_up   = (float(ema21.iloc[-2]) > float(ema50.iloc[-2]) and
-                          float(ema50.iloc[-2]) > float(ema100.iloc[-2]))
-            trend_down = (float(ema21.iloc[-2]) < float(ema50.iloc[-2]) and
-                          float(ema50.iloc[-2]) < float(ema100.iloc[-2]))
-
-            # New York — require stronger alignment
-            if session == "newyork":
-                # Also check momentum is accelerating not fading
-                ema21_prev = float(ema21.iloc[-3])
-                ema21_curr = float(ema21.iloc[-2])
-                ema_accel_up   = ema21_curr > ema21_prev   # EMA21 still rising
-                ema_accel_down = ema21_curr < ema21_prev   # EMA21 still falling
-
-                if alpha_mom > 3.0 and alpha_mr > 1.0:
-                    if not (trend_up and ema_accel_up):
-                        return None
-                    direction = "BUY"
-                    signal_strength = min(alpha_mr, 5.0)
-
-                elif alpha_mom < -3.0 and alpha_mr < -1.0:
-                    if not (trend_down and ema_accel_down):
-                        return None
-                    direction = "SELL"
-                    signal_strength = min(abs(alpha_mr), 5.0)
-
-            # London — standard EMA check
-            else:
-                if alpha_mom > 2.5 and alpha_mr > 1.0:
-                    if not trend_up:
-                        return None
-                    direction = "BUY"
-                    signal_strength = min(alpha_mr, 5.0)
-
-                elif alpha_mom < -2.5 and alpha_mr < -1.0:
-                    if not trend_down:
-                        return None
-                    direction = "SELL"
-                    signal_strength = min(abs(alpha_mr), 5.0)
-
-        elif regime == REGIME_HIGH_VOL:
-            # High vol: only take very high conviction mean reversion
-            # Reduce threshold — need stronger signal
-            mode = "high_vol_mr"
-
-            if alpha_mr > 2.0 and alpha_mom > 0:
-                direction = "BUY"
-                signal_strength = min(alpha_mr, 5.0)
-
-            elif alpha_mr < -2.0 and alpha_mom < 0:
-                direction = "SELL"
-                signal_strength = min(abs(alpha_mr), 5.0)
-
+        # ── FILTER 6: 4H bias alignment (momentum must align with HTF) ───────
         if bias_4h == "DOWN" and direction == "BUY":
             return None
         if bias_4h == "UP" and direction == "SELL":
             return None
-        
 
-        if direction is None:
+        # ── FILTER 7: Bar confirmation — prev bar must close in direction ─────
+        if direction == "BUY" and bar_close < bar_open:
             return None
-        
-        #── Gate: reject weak signals ─────────────────────────────────────────
-        if signal_strength < self.min_combined_score:
+        if direction == "SELL" and bar_close > bar_open:
             return None
 
-        # ── SL / TP — regime-scaled ───────────────────────────────────────────
-        # In trending regime use wider SL (trend can retest)
-        # In mean-revert use tighter SL (fast reversion or invalidated)
-        if regime == REGIME_TRENDING:
-            sl_mult = max(self.sl_vol_mult * 1.2, 4.5)
-            tp_mult = max(self.tp_vol_mult * 1.5, 8.0)  # trend trades go further
-        elif regime == REGIME_HIGH_VOL:
-            sl_mult = 3.0   # tighter SL in high vol
-            tp_mult = 7.0   # wider TP — R:R = 2.0
-        else:
-            sl_mult = self.sl_vol_mult
-            tp_mult = self.tp_vol_mult
+        # ── FILTER 8: Post-SL cooling period ──────────────────────────────────
+        bars_since_sl = bar_idx - self._last_sl_bar.get(direction, -999)
+        if bars_since_sl < self.cooling_bars:
+            return None
 
-        sl_dist = max(vol_price * sl_mult, 0.00100)
-        tp_dist = max(vol_price * tp_mult, sl_dist * 2.0)
+        # ── Compute SL / TP — ATR-based with WIDE FLOORS ─────────────────────
+        # v5.0 CRITICAL FIX: SL must be above noise floor (15+ pips for EURUSD M5)
+        # Previous v4.0 had 10-pip floor → 86% SL hit rate
+        sl_dist = atr * self.sl_atr_mult
+        sl_dist = max(sl_dist, self.min_sl_pips)   # 15-pip floor
+        sl_dist = min(sl_dist, self.max_sl_pips)   # 40-pip ceiling
 
-        # Scale TP by signal strength: stronger signal = allow larger target
-        tp_dist = tp_dist * (1.0 + 0.10 * (signal_strength - 2.0))
-        tp_dist = max(tp_dist, sl_dist * 1.8)
+        tp_dist = atr * self.tp_atr_mult
+        tp_dist = max(tp_dist, sl_dist * self.min_rr)  # enforce minimum RR
 
         if direction == "BUY":
             sl = entry - sl_dist
@@ -219,21 +278,39 @@ class MomentumStrategy(StrategyBase):
             sl = entry + sl_dist
             tp = entry - tp_dist
 
+        # Final RR check
+        rr = tp_dist / sl_dist if sl_dist > 0 else 0
+        if rr < self.min_rr:
+            return None
+
+        trail_dist = atr * self.trail_atr_mult
+
         reason = (
-            f"mode={mode} | combined={signal_strength:+.2f} | "
-            f"a_mr={alpha_mr:+.2f} a_mom={alpha_mom:+.2f} "
-            f"z={z_vwap:+.2f} vol_reg={vol_regime:+.2f} | "
-            f"vol10={vol10:.6f} | session={session}"
+            f"alpha_mom={alpha_mom:.2f} | ADX={adx:.1f} "
+            f"DI+={plus_di:.1f} DI-={minus_di:.1f} gap={di_gap:.1f} | "
+            f"RSI={rsi:.1f} | slope={slope:.6f} | "
+            f"ATR={atr*10000:.1f}pips | SL={sl_dist*10000:.1f}pips | "
+            f"Gap={signal_gap:.2f} | Regime={regime}"
         )
 
-        logger.info(f"[Alpha] {direction} | {reason}")
-
-        return {
-            "direction": direction,
-            "entry":     round(entry, 5),
-            "sl":        round(sl, 5),
-            "tp":        round(tp, 5),
-            "atr":       round(vol_price, 6),
-            "trail_sl":  round(sl_dist * 0.8, 6),
-            "reason":    reason,
+        signal = {
+            "direction":     direction,
+            "entry":         round(entry, 5),
+            "sl":            round(sl, 5),
+            "tp":            round(tp, 5),
+            "atr":           round(float(atr), 6),
+            "trail_sl":      round(trail_dist, 6),
+            "breakeven_atr": round(atr, 6),
+            "signal_gap":    round(signal_gap, 3),
+            "strategy":      "MomentumStrategy",
+            "session":       session or "",
+            "reason":        reason,
         }
+
+        logger.info(
+            f"[Momentum] {direction} | Entry:{entry:.5f} "
+            f"SL:{sl:.5f}({sl_dist*10000:.0f}pips) "
+            f"TP:{tp:.5f}({tp_dist*10000:.0f}pips) RR:{rr:.2f} | "
+            f"{reason}"
+        )
+        return signal

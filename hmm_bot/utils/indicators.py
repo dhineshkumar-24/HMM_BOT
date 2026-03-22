@@ -3,6 +3,11 @@ utils/indicators.py — Pure numeric indicator functions.
 
 All functions accept Pandas Series / DataFrames and return Series.
 No MT5, no strategy, no side effects.
+
+FIX M3 / C1: compute_ema_slope() now returns a NORMALIZED slope
+             (price-relative %) instead of raw pip diff. This makes
+             the threshold comparable across symbols, timeframes,
+             and price levels.
 """
 
 import numpy as np
@@ -110,16 +115,34 @@ def compute_ema(series: pd.Series, period: int) -> pd.Series:
     return series.ewm(span=period, adjust=False).mean()
 
 
-def compute_ema_slope(series: pd.Series, ema_period: int, slope_window: int = 5) -> pd.Series:
+def compute_ema_slope(
+    series: pd.Series,
+    ema_period: int,
+    slope_window: int = 5,
+) -> pd.Series:
     """
-    Slope of an EMA as first-difference over `slope_window` bars.
+    Normalized slope of an EMA over `slope_window` bars.
 
-    Positive → price trending up.
-    Near-zero → flat / ranging.
-    Negative  → price trending down.
+    FIX M3 / C1: Returns the slope as a FRACTION of the lagged price
+    (dimensionless %) rather than raw price-unit diff.
+
+    Interpretation:
+        +0.001  → EMA rose 0.1% over slope_window bars (rising)
+        Near 0  → EMA flat / ranging
+        -0.001  → EMA fell 0.1% (falling)
+
+    This makes the ema_slope_flat threshold comparable across:
+        - Different instruments (EURUSD 1.10 vs USDJPY 155)
+        - Different timeframes (M1 vs M5 vs H1)
+        - Different volatility regimes
+
+    Config threshold:   ema_slope_flat: 0.0010   (0.10% per 5 bars)
+    Old raw threshold:  ema_slope_flat: 0.00005  (was calibrated for H1, not M5)
     """
     ema = compute_ema(series, period=ema_period)
-    return ema.diff(slope_window)
+    lagged_price = series.shift(slope_window)
+    # Avoid division by zero on the first few bars
+    return ema.diff(slope_window) / lagged_price.replace(0, np.nan)
 
 
 def compute_adx(df: pd.DataFrame, period: int = 14) -> pd.DataFrame:
@@ -167,4 +190,3 @@ def compute_adx(df: pd.DataFrame, period: int = 14) -> pd.DataFrame:
         {"adx": adx, "plus_di": plus_di, "minus_di": minus_di},
         index=df.index,
     )
-

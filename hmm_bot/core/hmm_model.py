@@ -52,11 +52,11 @@ REGIME_NAMES: dict[int, str] = {
     REGIME_HIGH_VOL:    "high_volatility",
 }
 
-CONFIDENCE_THRESHOLD: float = 0.70   # Minimum posterior probability to act
+CONFIDENCE_THRESHOLD: float = 0.65   # Minimum posterior probability to act
 N_STATES:             int   = 3
-N_TRAINING_BARS:      int   = 5000
+N_TRAINING_BARS:      int   = 40000   # Use more data for better regime sep.
 N_PREDICTION_BARS:    int   = 200
-N_TRAINING_SEEDS:     int   = 3
+N_TRAINING_SEEDS:     int   = 5      # More seeds = better likelihood surface coverage
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -113,7 +113,7 @@ class HMMRegimeDetector:
     def __init__(
         self,
         n_states:      int   = N_STATES,
-        n_iter:        int   = 150,
+        n_iter:        int   = 300,
         n_seeds:       int   = N_TRAINING_SEEDS,
         model_path:    str   = "models/hmm.pkl",
         n_train_bars:  int   = N_TRAINING_BARS,
@@ -128,11 +128,12 @@ class HMMRegimeDetector:
         self.n_pred_bars     = n_pred_bars
         self.confidence_thr  = confidence_thr
 
-        self._model: Optional[GaussianHMM] = None   # hmmlearn.GaussianHMM — best seed
-        self._scaler         = None   # sklearn.StandardScaler
+        self._model: Optional[GaussianHMM] = None
+        self._scaler         = None
         self._is_trained     = False
         self._regime_history: list[int] = []
-        self._label_map: dict[int, int]  = {0: 0, 1: 1, 2: 2}  # identity until trained
+        self._label_map: dict[int, int]  = {0: 0, 1: 1, 2: 2}
+        self._posterior_history: list[np.ndarray] = []   # for EMA smoothing
 
         self._warmup_logged = False
         self._last_gate_reason = None
@@ -215,8 +216,9 @@ class HMMRegimeDetector:
             f"| Converged: {best_model.monitor_.converged}"
         )
         self._log_model_summary()
-        # ── Align learned state integers to economic regime labels ─────────────
-        self._label_map = self._align_state_labels()
+        # Reset smoothing buffer then align with composite scoring
+        self._posterior_history = []
+        self._label_map = self._align_state_labels(X_scaled)
 
     # ── Prediction ────────────────────────────────────────────────────────────
 
@@ -289,14 +291,25 @@ class HMMRegimeDetector:
             posteriors[np.arange(len(X_scaled)), state_sequence] = 1.0
 
         # Current bar = last observation
-        raw_state     = int(state_sequence[-1])
-        current_probs = posteriors[-1]                          # shape (n_states,)
-        confidence    = float(current_probs[raw_state])
+        raw_state = int(state_sequence[-1])
+
+        # ── Posterior smoothing (regime persistence filter) ────────────────────────
+        # Apply EMA-5 smoothing to posteriors BEFORE argmax.
+        # This adds effective regime persistence: prevents flickering between
+        # regimes on consecutive bars (e.g. regime stays stable for 15-30 bars
+        # even if raw posteriors bounce). No look-ahead bias: we smooth only the
+        # historical posterior sequence, then take the LAST smoothed value.
+        last_posterior  = posteriors[-1]    # shape (n_states,)
+        smooth_posterior = self._smooth_posterior(last_posterior)
+
+        # Use the smoothed argmax as the regime label
+        raw_state_smooth  = int(np.argmax(smooth_posterior))
+        confidence        = float(smooth_posterior[raw_state_smooth])
 
         # Translate learned state integer → canonical economic regime label
-        current_state = self._label_map.get(raw_state, raw_state)
+        current_state = self._label_map.get(raw_state_smooth, raw_state_smooth)
 
-        return current_state, confidence, current_probs
+        return current_state, confidence, smooth_posterior
 
     # ── Trade gate ────────────────────────────────────────────────────────────
 
@@ -381,7 +394,7 @@ class HMMRegimeDetector:
             "scaler":     self._scaler,
             "n_states":   self.n_states,
             "features":   FEATURE_COLS,
-            "label_map":  self._label_map,   # ← persist alignment
+            "label_map":  self._label_map,
         }
         joblib.dump(payload, target)
         logger.info(f"HMM model saved to: {target}")
@@ -471,61 +484,69 @@ class HMMRegimeDetector:
             vals = "  ".join(f"{v:+.4f}" for v in mean_vec)
             logger.info(f"  State {i} means: [{vals}]")
         logger.info("──────────────────────────────────────")
-    def _align_state_labels(self) -> dict:
+
+    def _align_state_labels(self, X_scaled: np.ndarray = None) -> dict:
         """
-        After training, map HMM integer states to economic regime labels
-        by examining the feature means of each learned state.
+        Map HMM integer states to economic regime labels using a 5-feature
+        composite TRENDING score (v3.0).
 
-        Economic rules:
-            HIGH_VOL      → state with highest realized_vol (feature index 1)
-            TRENDING      → state with highest positive autocorr (feature index 3)
-            MEAN_REVERT   → remaining state
+        OLD approach (gap=0.0077): used single lag-1 autocorr.
+        NEW approach (target gap>0.10): weighted composite of 5 independent
+        statistical signals that research shows discriminate trending vs MR.
 
-        Returns:
-            dict mapping {learned_state_int: canonical_regime_int}
-            e.g. {0: 2, 1: 0, 2: 1}  means learned-0→high_vol, learned-1→mean_rev, learned-2→trend
+        TRENDING_SCORE = 0.30*ER + 0.25*VR + 0.20*Hurst + 0.15*AC_multi + 0.10*TC
+
+        Feature index map (FEATURE_COLS v3.0):
+            0: log_return       1: atr_norm          2: vol_ratio
+            3: vol_of_vol_rel   4: efficiency_ratio   5: variance_ratio
+            6: hurst_approx    7: autocorr_multi    8: momentum_scaled
+            9: trend_consistency 10: ema_slope       11: drawdown_pct
+            12: skewness
         """
         if self._model is None:
-            return {0: 0, 1: 1, 2: 2}  # identity if not trained
+            return {0: 0, 1: 1, 2: 2}
 
-        means = self._model.means_  # shape (n_states, n_features)
+        means  = self._model.means_   # shape (n_states, n_features)
+        n_feat = means.shape[1]
 
-        # Feature indices from FEATURE_COLS:
-        # 0=log_return, 1=realized_vol, 2=vol_of_vol, 3=autocorr, 4=atr_norm
-        IDX_RVOL   = 1   # realized volatility
-        IDX_AUTOCR = 3   # autocorrelation (positive = trending)
-        IDX_ATR    = 4   # normalized ATR
+        # Helper: safe index access with fallback
+        def idx(i, fallback=0):
+            return i if n_feat > i else fallback
 
-        rvol_per_state   = means[:, IDX_RVOL]
-        autocr_per_state = means[:, IDX_AUTOCR]
-        atr_per_state    = means[:, IDX_ATR]
+        IDX_ATR_NORM = idx(1)
+        IDX_VOL_RATIO = idx(2)
+        IDX_VOV_REL   = idx(3)
+        IDX_ER        = idx(4)   # Efficiency Ratio:  HIGH = trending
+        IDX_VR        = idx(5)   # Variance Ratio:    HIGH = trending
+        IDX_HURST     = idx(6)   # Hurst:             HIGH = trending
+        IDX_AC_MULTI  = idx(7)   # Multi-lag autocorr: HIGH = trending
+        IDX_TC        = idx(9)   # Trend consistency: HIGH = trending
 
-        # Use a combined vol score: realized_vol + atr_norm
-        combined_vol = rvol_per_state + atr_per_state
+        # ── Step 1: HIGH_VOL = highest combined volatility ────────────────────
+        vol_score = (means[:, IDX_ATR_NORM] +
+                     np.clip(means[:, IDX_VOL_RATIO], 0, None) * 2.0 +
+                     np.clip(means[:, IDX_VOV_REL], 0, None))
+        high_vol_state = int(np.argmax(vol_score))
 
-        # HIGH_VOL = highest combined volatility score
-        high_vol_state = int(np.argmax(combined_vol))
-
-        # TRENDING = only if autocorrelation is genuinely POSITIVE
-        # If both remaining states have negative autocorr, neither is truly trending
+        # ── Step 2: TRENDING vs MEAN_REVERT via composite score ───────────────
         remaining = [i for i in range(self.n_states) if i != high_vol_state]
-        autocr_remaining = [autocr_per_state[i] for i in remaining]
-        best_idx = int(np.argmax(autocr_remaining))
-        best_trending_state = remaining[best_idx]
 
-        if autocr_per_state[best_trending_state] > 0.02:
-            # Genuinely positive autocorr = trending market
-            trending_state = best_trending_state
-            mean_rev_state = [i for i in remaining if i != trending_state][0]
-        else:
-            # Both states are mean-reverting — assign by lower volatility
-            logger.warning(
-                "No state has positive autocorr — both remaining states "
-                "treated as MEAN_REVERT. Lower-vol state gets MR label."
-            )
-            vol_remaining = [rvol_per_state[i] for i in remaining]
-            mean_rev_state = remaining[int(np.argmin(vol_remaining))]
-            trending_state = remaining[int(np.argmax(vol_remaining))]
+        def trending_composite(s: int) -> float:
+            er_s  = float(means[s, IDX_ER])          # [0, 1], already bounded
+            vr_s  = float(means[s, IDX_VR])          # [-1.5, 1.5]
+            h_s   = float(means[s, IDX_HURST])       # [-0.5, 0.5]
+            ac_s  = float(means[s, IDX_AC_MULTI])    # [-0.5, 0.5]
+            tc_s  = float(means[s, IDX_TC]) - 0.5    # [0,1] → center at 0
+            return (0.30 * er_s + 0.25 * vr_s +
+                    0.20 * h_s  + 0.15 * ac_s + 0.10 * tc_s)
+
+        scores         = {i: trending_composite(i) for i in remaining}
+        trending_state = max(scores, key=lambda k: scores[k])
+        mean_rev_state = [i for i in remaining if i != trending_state][0]
+
+        # ── Gap score diagnostic ──────────────────────────────────────────────
+        gap    = abs(scores[trending_state] - scores[mean_rev_state])
+        status = "✅" if gap >= 0.10 else ("⚠️" if gap >= 0.03 else "❌")
 
         label_map = {
             mean_rev_state: REGIME_MEAN_REVERT,
@@ -533,10 +554,56 @@ class HMMRegimeDetector:
             high_vol_state: REGIME_HIGH_VOL,
         }
 
-        logger.info("── State Label Alignment ─────────────────")
-        logger.info(f"  Learned state {high_vol_state} → HIGH_VOL     (vol={combined_vol[high_vol_state]:+.4f})")
-        logger.info(f"  Learned state {trending_state} → TRENDING     (autocorr={autocr_per_state[trending_state]:+.4f})")
-        logger.info(f"  Learned state {mean_rev_state} → MEAN_REVERT  (autocorr={autocr_per_state[mean_rev_state]:+.4f})")
-        logger.info("──────────────────────────────────────────")
+        logger.info("── State Label Alignment (v3.0 composite) ──────────────")
+        logger.info(
+            f"  State {high_vol_state} → HIGH_VOL    "
+            f"(vol_score={vol_score[high_vol_state]:+.4f})"
+        )
+        logger.info(
+            f"  State {trending_state} → TRENDING    "
+            f"(composite={scores[trending_state]:+.4f})"
+        )
+        logger.info(
+            f"  State {mean_rev_state} → MEAN_REVERT "
+            f"(composite={scores[mean_rev_state]:+.4f})"
+        )
+        logger.info(
+            f"  {status} Gap score: {gap:.4f} "
+            f"({'GOOD' if gap >= 0.10 else 'WEAK' if gap >= 0.03 else 'CRITICAL'})"
+            f"  (target > 0.10)"
+        )
+        logger.info("────────────────────────────────────────────────────────")
 
         return label_map
+
+    def _smooth_posterior(
+        self,
+        new_probs: np.ndarray,
+        alpha: float = 0.25,
+    ) -> np.ndarray:
+        """
+        EMA-smooth posterior probability vector for regime persistence.
+
+        Prevents bar-by-bar flickering between TRENDING and MEAN_REVERT.
+        With alpha=0.25 the effective window is ~4 bars = 20 minutes on M5.
+
+        P_smooth = alpha * P_new + (1 - alpha) * P_previous
+
+        No look-ahead: smoothing uses only historical (already-computed) posteriors.
+        """
+        if not self._posterior_history:
+            self._posterior_history.append(new_probs.copy())
+            return new_probs
+
+        prev_smooth = self._posterior_history[-1]
+        smoothed    = alpha * new_probs + (1.0 - alpha) * prev_smooth
+
+        total = smoothed.sum()
+        if total > 0:
+            smoothed = smoothed / total
+
+        self._posterior_history.append(smoothed.copy())
+        if len(self._posterior_history) > 10:
+            self._posterior_history.pop(0)
+
+        return smoothed

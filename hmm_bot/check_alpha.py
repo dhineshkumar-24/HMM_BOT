@@ -102,7 +102,7 @@ def report(name: str, scores: pd.Series, fwd: pd.Series,
 # Data load
 # ─────────────────────────────────────────────────────────────────────────────
 
-def load_data(n_bars=50000):
+def load_data(n_bars=80000):
     import MetaTrader5 as mt5
     from config import load_config
 
@@ -159,7 +159,7 @@ def main():
     print("="*55)
 
     print("\n📡  Loading 50,000 bars from MT5...")
-    df, config = load_data(n_bars=50000)
+    df, config = load_data(n_bars=80000)
 
     print("⚙️   Computing indicators...")
     from strategy.strategy_router import StrategyRouter

@@ -102,7 +102,7 @@ def generate_html_report(
     # ── Run info ──────────────────────────────────────────────────────────────
     start_date = getattr(args, "start_date", None)
     end_date   = getattr(args, "end_date", None)
-    bars_val   = getattr(args, "bars", 50000)
+    bars_val   = getattr(args, "bars", 80000)
     if start_date and end_date:
         range_str = f"{start_date} → {end_date}"
     else:
@@ -110,8 +110,13 @@ def generate_html_report(
 
     timeframe   = "M5"
     run_time    = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    wins        = int(metrics.get("wins",   0))
-    losses      = int(metrics.get("losses", 0))
+    # FIX L2: Use correct key names from compute_metrics() output
+    wins   = int(metrics.get("win_count",  0))   # was "wins"   — wrong key
+    losses = int(metrics.get("loss_count", 0))   # was "losses" — wrong key
+    var_95 = metrics.get("var_95",  None)
+    cvar_95 = metrics.get("cvar_95", None)
+    var_str  = f"${var_95:.2f}"  if var_95  is not None else "N/A"
+    cvar_str = f"${cvar_95:.2f}" if cvar_95 is not None else "N/A"
 
     eq_json     = json.dumps([round(v, 2) for v in eq_sampled])
     labels_json = json.dumps(labels)
@@ -267,11 +272,13 @@ def generate_html_report(
   </div>
   <div class="panel">
     <div class="block-title">Risk metrics</div>
-    <div class="stat-row"><span class="sk">Sharpe ratio</span><span class="sv sv-bad">{float(metrics.get('sharpe_ratio',0)):.3f}</span></div>
-    <div class="stat-row"><span class="sk">Sortino ratio</span><span class="sv sv-bad">{float(metrics.get('sortino_ratio',0)):.3f}</span></div>
+    <div class="stat-row"><span class="sk">Sharpe ratio</span><span class="sv sv-bad">{float(metrics.get('sharpe',  0)):.3f}</span></div>
+    <div class="stat-row"><span class="sk">Sortino ratio</span><span class="sv sv-bad">{float(metrics.get('sortino', 0)):.3f}</span></div>
     <div class="stat-row"><span class="sk">Max drawdown</span><span class="sv sv-bad">{dd_val:.2f}%</span></div>
     <div class="stat-row"><span class="sk">Total trades</span><span class="sv">{total_trades}</span></div>
     <div class="stat-row"><span class="sk">Wins / Losses</span><span class="sv">{wins} / {losses}</span></div>
+    <div class="stat-row"><span class="sk">VaR (95%)</span><span class="sv sv-bad">{var_str}</span></div>
+    <div class="stat-row"><span class="sk">CVaR (95%)</span><span class="sv sv-bad">{cvar_str}</span></div>
   </div>
 </div>
 

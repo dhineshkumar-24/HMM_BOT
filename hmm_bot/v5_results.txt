@@ -1,0 +1,36 @@
+﻿============================================================
+  v5.0 BACKTEST RESULTS ANALYSIS
+============================================================
+
+Total trades: 135
+Wins: 40 | Losses: 95
+Win rate: 29.6%
+Net profit: $-972.40
+Avg win: $26.49
+Avg loss: $-21.39
+Profit factor: 0.52
+
+Exit reason breakdown:
+exit_reason
+SL      84
+TIME    41
+TP      10
+
+Strategy breakdown:
+  MomentumStrategy: 135 trades | WR=29.6% | Net=$-972.40
+
+Session breakdown:
+  newyork: 74 trades | WR=33.8% | Net=$-256.21
+  asian: 38 trades | WR=26.3% | Net=$-335.97
+  london: 23 trades | WR=21.7% | Net=$-380.22
+
+SL distance analysis:
+  SL distance: mean=9.4pips, median=9.8pips
+
+Costs:
+  Total costs: $666.54
+  Avg cost/trade: $4.94
+
+=== FULL METRICS ===
+   passed                                                                                   rules  total_trades  win_count  loss_count  win_rate  net_profit  gross_profit   gross_loss    avg_win  avg_loss  profit_factor  expectancy  max_drawdown    sharpe   sortino    calmar  recovery_factor   var_95  cvar_95
+0   False  {'min_trades': True, 'win_rate': False, 'profit_factor': False, 'max_drawdown': False}           135         40          95  0.296296  -972.40219   1059.567097  2031.969287  26.489177  21.38915       0.521448   -7.202979      0.113887 -4.012277 -7.724426 -0.853834        -0.853834  45.0082  49.2896

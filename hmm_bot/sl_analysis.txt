@@ -1,0 +1,29 @@
+﻿SL DISTANCE DISTRIBUTION:
+  Count: 84
+  Min:    0.0 pips
+  P10:    0.2 pips
+  P25:    0.5 pips
+  Median: 9.8 pips
+  P75:    16.0 pips
+  Max:    23.4 pips
+
+  Below 15 pips: 57 (67.9%)
+  Below 10 pips: 43 (51.2%)
+  Below 5 pips:  28 (33.3%)
+
+  Lots: 0.234 avg
+  Net PnL on SL trades: $-17.92 avg
+
+DIRECTION:
+direction
+BUY     89
+SELL    46
+dtype: int64
+
+Bias check ù BUY vs SELL:
+  BUY:  89 trades, WR=30.3%, Net=$-701.33
+  SELL: 46 trades, WR=28.3%, Net=$-271.07
+
+TIME exits: 41
+  Avg PnL: $-2.88
+  Win rate: 46.3%

@@ -1,0 +1,43 @@
+﻿============================================================
+  v5.0 FIX2 ù TRAILING STOP + BREAKEVEN FIX
+============================================================
+
+Total trades: 145
+Wins: 70 | Losses: 75
+Win rate: 48.3%
+Net profit: $-1098.35
+Avg win: $12.06
+Avg loss: $-25.90
+Profit factor: 0.43
+
+Exit reasons:
+exit_reason
+SL      89
+TIME    51
+TP       5
+
+SL distance: min=0.2 P25=4.7 med=4.9 P75=16.3 max=24.2
+  Below 15 pips: 57 (64%)
+  Below 5 pips:  54 (61%)
+
+Strategy:
+  MomentumStrategy: 145 trades
+
+Session:
+  newyork: 78 tr | WR=47.4% | Net=$-432.58
+  asian: 43 tr | WR=53.5% | Net=$-307.13
+  london: 24 tr | WR=41.7% | Net=$-358.64
+
+Direction:
+  SELL: 49 tr | WR=51.0% | Net=$-330.56
+  BUY: 96 tr | WR=46.9% | Net=$-767.79
+
+Costs: total=$704.97, avg=$4.86
+  total_trades: 145.0000
+  win_rate: 0.4828
+  net_profit: -1098.3532
+  profit_factor: 0.4346
+  sharpe: -5.0911
+  max_drawdown: 0.1114
+  calmar: -0.9859
+  sortino: -8.8691

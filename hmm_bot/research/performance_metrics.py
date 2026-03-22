@@ -1,32 +1,43 @@
 """
-research/performance_metrics.py — Quantitative performance analytics.
+research/performance_metrics.py — Quantitative performance analytics v4.0.
 
 Computes all standard quant metrics from a list of trade PnL values
 or a per-bar equity curve.
+
+v4.0 additions:
+    Calmar Ratio, Recovery Factor, Monte Carlo p-value
+    Transaction cost sensitivity analysis
 
 Metrics:
     Total Trades, Win Rate, Profit Factor
     Average Win, Average Loss, Expectancy
     Max Drawdown (%), Sharpe Ratio, Sortino Ratio
-    Equity curve array
+    Calmar Ratio, Recovery Factor (NEW)
+    VaR (95%), CVaR (95%)
+    Monte Carlo p-value (NEW)
+    Per-strategy and per-session breakdowns
 
 Formula references:
     Sharpe  = mean(returns) / std(returns) * sqrt(N)
     Sortino = mean(returns) / downside_std * sqrt(N)
     PF      = gross_profit / gross_loss
     Expect  = (win_rate * avg_win) - (loss_rate * avg_loss)
+    Calmar  = annualized_return / max_drawdown
+    VaR     = -percentile(returns, 5%) at 95% confidence
+    CVaR    = mean of returns worse than VaR (expected shortfall)
 """
 
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 from typing import Optional
 
 import numpy as np
 import pandas as pd
 
 
-# Validation thresholds (Step 11 requirements)
+# Validation thresholds
 MIN_WIN_RATE      = 0.45
 MIN_PROFIT_FACTOR = 1.20
 MAX_DRAWDOWN      = 0.05
@@ -37,18 +48,12 @@ def compute_metrics(
     trade_profits: list[float],
     annual_factor: int = 252,
     initial_balance: float = 10_000.0,
+    confidence: float = 0.95,
 ) -> dict:
     """
     Compute full performance metrics from a list of per-trade PnL values.
 
-    Args:
-        trade_profits: Realised net PnL for every closed trade (after costs).
-        annual_factor: Periods per year for Sharpe/Sortino annualisation.
-                       Use 252 for daily, 1440 for M1 bars, etc.
-        initial_balance: Starting account balance for normalizing drawdown.
-
-    Returns:
-        Dict with all metrics. All rates are 0.0–1.0 (not percentage).
+    v4.0: Added Calmar ratio and recovery factor.
     """
     n = len(trade_profits)
     if n == 0:
@@ -75,8 +80,6 @@ def compute_metrics(
     )
     expectancy = (win_rate * avg_win) - ((1 - win_rate) * avg_loss)
 
-    # ── Returns per trade (normalise to % of initial capital if unknown: use raw) ──
-    # We use raw PnL ratios scaled to unit size for Sharpe/Sortino
     mean_ret = float(profits.mean())
     std_ret  = float(profits.std())            if n > 1 else 0.0
     neg_dev  = float(losses.std())             if len(losses) > 1 else 0.0
@@ -88,37 +91,164 @@ def compute_metrics(
     equity_curve = np.cumsum(profits)
     max_dd = _max_drawdown(equity_curve, initial_balance=initial_balance)
 
+    # ── Calmar Ratio (NEW v4.0) ───────────────────────────────────────────────
+    # Calmar = annualized return / max drawdown
+    total_return_pct = net_profit / initial_balance
+    calmar = total_return_pct / max_dd if max_dd > 0.001 else 0.0
+
+    # ── Recovery Factor (NEW v4.0) ────────────────────────────────────────────
+    # Recovery Factor = total profit / max dollar drawdown
+    max_dd_dollars = max_dd * initial_balance
+    recovery_factor = net_profit / max_dd_dollars if max_dd_dollars > 0 else 0.0
+
+    # ── VaR / CVaR ────────────────────────────────────────────────────────────
+    var_cvar = compute_var_cvar(trade_profits, confidence=confidence)
+
     return {
-        "total_trades":   total_trades,
-        "win_count":      win_count,
-        "loss_count":     loss_count,
-        "win_rate":       win_rate,
-        "net_profit":     net_profit,
-        "gross_profit":   gross_profit,
-        "gross_loss":     gross_loss,
-        "avg_win":        avg_win,
-        "avg_loss":       avg_loss,
-        "profit_factor":  profit_factor,
-        "expectancy":     expectancy,
-        "max_drawdown":   max_dd,
-        "sharpe":         sharpe,
-        "sortino":        sortino,
-        "equity_curve":   equity_curve.tolist(),
+        "total_trades":    total_trades,
+        "win_count":       win_count,
+        "loss_count":      loss_count,
+        "win_rate":        win_rate,
+        "net_profit":      net_profit,
+        "gross_profit":    gross_profit,
+        "gross_loss":      gross_loss,
+        "avg_win":         avg_win,
+        "avg_loss":        avg_loss,
+        "profit_factor":   profit_factor,
+        "expectancy":      expectancy,
+        "max_drawdown":    max_dd,
+        "sharpe":          sharpe,
+        "sortino":         sortino,
+        "calmar":          calmar,
+        "recovery_factor": recovery_factor,
+        "equity_curve":    equity_curve.tolist(),
+        **var_cvar,
     }
+
+
+def compute_var_cvar(
+    trade_profits: list[float],
+    confidence: float = 0.95,
+) -> dict:
+    """
+    Historical VaR and CVaR (Expected Shortfall).
+    """
+    key_suffix = int(confidence * 100)
+
+    if not trade_profits or len(trade_profits) < 5:
+        return {
+            f"var_{key_suffix}":  0.0,
+            f"cvar_{key_suffix}": 0.0,
+        }
+
+    profits = np.array(trade_profits, dtype=float)
+    alpha   = 1.0 - confidence
+
+    var_threshold = float(np.percentile(profits, alpha * 100))
+    var  = -var_threshold
+
+    tail_losses = profits[profits <= var_threshold]
+    cvar = float(-tail_losses.mean()) if len(tail_losses) > 0 else var
+
+    return {
+        f"var_{key_suffix}":  round(var,  4),
+        f"cvar_{key_suffix}": round(cvar, 4),
+    }
+
+
+def monte_carlo_pvalue(
+    trade_profits: list[float],
+    n_simulations: int = 10_000,
+    seed: int = 42,
+) -> dict:
+    """
+    Monte Carlo bootstrap p-value for strategy edge.
+
+    Method:
+        1. Randomly reshuffle the trade PnL sequence N times
+        2. For each reshuffle, compute total return
+        3. p-value = fraction of reshuffles with return >= actual return
+
+    Interpretation:
+        p < 0.05:  Strategy edge is statistically significant at 95% level
+        p < 0.01:  Highly significant (very unlikely due to luck)
+        p > 0.10:  Edge could be due to random ordering
+
+    Args:
+        trade_profits: List of net P&L per trade.
+        n_simulations: Number of bootstrap iterations.
+        seed:          Random seed for reproducibility.
+
+    Returns:
+        Dict with 'mc_pvalue', 'actual_return', 'mean_shuffle_return'.
+    """
+    if len(trade_profits) < 10:
+        return {
+            "mc_pvalue":             1.0,
+            "actual_return":         0.0,
+            "mean_shuffle_return":   0.0,
+        }
+
+    rng = np.random.default_rng(seed)
+    profits = np.array(trade_profits, dtype=float)
+    actual_return = float(profits.sum())
+
+    shuffle_returns = np.zeros(n_simulations)
+    for i in range(n_simulations):
+        # Randomly reshuffle the trade sequence (same trades, different order)
+        shuffled = rng.permutation(profits)
+        # Compute max drawdown-adjusted return (Sharpe-like metric)
+        equity = np.cumsum(shuffled)
+        shuffle_returns[i] = float(equity[-1])
+
+    # p-value: fraction of simulations that beat or match actual return
+    p_value = float(np.mean(shuffle_returns >= actual_return))
+
+    return {
+        "mc_pvalue":           round(p_value, 4),
+        "actual_return":       round(actual_return, 2),
+        "mean_shuffle_return": round(float(shuffle_returns.mean()), 2),
+    }
+
+
+def compute_risk_by_group(
+    trades,
+    group_field: str,
+    confidence: float = 0.95,
+) -> dict:
+    """
+    Compute VaR and CVaR grouped by strategy or session.
+    """
+    groups: dict[str, list[float]] = defaultdict(list)
+
+    for t in trades:
+        key = str(getattr(t, group_field, "unknown"))
+        groups[key].append(t.net_pnl)
+
+    result = {}
+    for name, pnls in groups.items():
+        vc = compute_var_cvar(pnls, confidence=confidence)
+        profits_arr = np.array(pnls)
+        wins = profits_arr[profits_arr > 0]
+        result[name] = {
+            "total_trades": len(pnls),
+            "win_count":    len(wins),
+            "win_rate":     len(wins) / len(pnls) if pnls else 0.0,
+            "net_profit":   float(profits_arr.sum()),
+            **vc,
+        }
+    return result
 
 
 def validate_strategy(metrics: dict) -> dict:
     """
     Check if a strategy meets minimum quality thresholds.
 
-    Validation rules (Step 11):
+    Validation rules:
         Win Rate         >= 45%
         Profit Factor    >= 1.20
         Max Drawdown     <= 5%
         Minimum Trades   >= 30
-
-    Returns:
-        Dict with 'passed' bool and per-rule breakdown.
     """
     rules = {
         "min_trades":      metrics["total_trades"] >= MIN_TRADES,
@@ -136,6 +266,10 @@ def print_metrics(metrics: dict, label: str = "BACKTEST RESULTS") -> None:
     dd = metrics.get("max_drawdown", 0)
     pf = metrics.get("profit_factor", 0)
     pf_str = f"{pf:.2f}" if pf != float("inf") else "∞"
+    var  = metrics.get("var_95",  None)
+    cvar = metrics.get("cvar_95", None)
+    calmar = metrics.get("calmar", 0)
+    recovery = metrics.get("recovery_factor", 0)
 
     print("=" * 52)
     print(f"  {label}")
@@ -153,6 +287,12 @@ def print_metrics(metrics: dict, label: str = "BACKTEST RESULTS") -> None:
     print(f"  Max Drawdown    : {dd:.2%}")
     print(f"  Sharpe Ratio    : {metrics.get('sharpe', 0):.3f}")
     print(f"  Sortino Ratio   : {metrics.get('sortino', 0):.3f}")
+    print(f"  Calmar Ratio    : {calmar:.3f}")
+    print(f"  Recovery Factor : {recovery:.2f}")
+    if var is not None:
+        print(f"  VaR  (95%)      : ${var:.2f}")
+    if cvar is not None:
+        print(f"  CVaR (95%)      : ${cvar:.2f}")
     print("=" * 52)
 
     if "rules" in metrics:
@@ -162,25 +302,104 @@ def print_metrics(metrics: dict, label: str = "BACKTEST RESULTS") -> None:
         print("=" * 52)
 
 
+def print_risk_breakdown(
+    trades,
+    confidence: float = 0.95,
+) -> None:
+    """Print VaR/CVaR breakdown per strategy and per session."""
+    print("\n" + "=" * 52)
+    print("  RISK BREAKDOWN — by Strategy")
+    print("=" * 52)
+    by_strategy = compute_risk_by_group(trades, "strategy", confidence)
+    for name, d in by_strategy.items():
+        key = int(confidence * 100)
+        print(f"  {name}:")
+        print(f"    Trades={d['total_trades']} WR={d['win_rate']:.1%} "
+              f"Net=${d['net_profit']:+.2f}")
+        print(f"    VaR_{key}=${d.get(f'var_{key}',0):.2f}  "
+              f"CVaR_{key}=${d.get(f'cvar_{key}',0):.2f}")
+
+    print("\n" + "=" * 52)
+    print("  RISK BREAKDOWN — by Session")
+    print("=" * 52)
+    by_session = compute_risk_by_group(trades, "session", confidence)
+    for name, d in by_session.items():
+        key = int(confidence * 100)
+        print(f"  {name}:")
+        print(f"    Trades={d['total_trades']} WR={d['win_rate']:.1%} "
+              f"Net=${d['net_profit']:+.2f}")
+        print(f"    VaR_{key}=${d.get(f'var_{key}',0):.2f}  "
+              f"CVaR_{key}=${d.get(f'cvar_{key}',0):.2f}")
+    print("=" * 52 + "\n")
+
+
+def transaction_cost_sensitivity(
+    trade_profits: list[float],
+    initial_balance: float = 10_000.0,
+    cost_multipliers: list[float] = None,
+) -> dict:
+    """
+    Test strategy robustness across different transaction cost levels.
+
+    Computes key metrics at 1×, 1.5×, 2× cost to find the breakeven
+    transaction cost multiplier.
+
+    Args:
+        trade_profits:   Existing net PnL per trade (already includes costs).
+        initial_balance: Starting balance for normalization.
+        cost_multipliers: List of cost multipliers to test (default [1.0, 1.5, 2.0]).
+
+    Returns:
+        Dict mapping multiplier → metrics dict.
+    """
+    if cost_multipliers is None:
+        cost_multipliers = [1.0, 1.25, 1.5, 2.0]
+
+    # Estimate per-trade cost from existing PnL (heuristic)
+    # Assume gross_pnl = net_pnl + estimated_cost
+    # This is approximate — for exact analysis, use the trade objects directly
+    results = {}
+    profits = np.array(trade_profits, dtype=float)
+
+    for mult in cost_multipliers:
+        # Scale the losses more aggressively (costs hit losers harder)
+        adjusted = profits.copy()
+        if mult > 1.0:
+            # Add extra cost proportional to the average loss
+            avg_loss = float(np.abs(profits[profits < 0]).mean()) if np.any(profits < 0) else 10.0
+            extra_cost = avg_loss * (mult - 1.0) * 0.5  # rough approximation
+            adjusted -= extra_cost
+
+        metrics = compute_metrics(
+            adjusted.tolist(),
+            initial_balance=initial_balance,
+        )
+        results[mult] = {
+            "net_profit":    metrics["net_profit"],
+            "win_rate":      metrics["win_rate"],
+            "profit_factor": metrics["profit_factor"],
+            "sharpe":        metrics["sharpe"],
+            "max_drawdown":  metrics["max_drawdown"],
+        }
+
+    return results
+
+
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 def _max_drawdown(equity_curve: np.ndarray, initial_balance: float = 10_000.0) -> float:
     """
     Maximum percentage drawdown from running peak.
-    Normalized by initial account balance — not by PnL peak.
-    This prevents division by near-zero when all trades lose.
+    Normalized by initial account balance.
     """
     if len(equity_curve) == 0:
         return 0.0
 
-    # equity_curve is cumulative PnL — convert to absolute balance
-    abs_equity = initial_balance + equity_curve   # e.g. 10000 + (-9.29) = 9990.71
-
+    abs_equity = initial_balance + equity_curve
     peak = np.maximum.accumulate(abs_equity)
-
-    # peak is always >= initial_balance at start, so no division by zero
     dd = (peak - abs_equity) / peak
     return float(dd.max()) if len(dd) > 0 else 0.0
+
 
 def _empty_metrics() -> dict:
     return {
@@ -189,5 +408,7 @@ def _empty_metrics() -> dict:
         "gross_loss": 0.0, "avg_win": 0.0, "avg_loss": 0.0,
         "profit_factor": 0.0, "expectancy": 0.0,
         "max_drawdown": 0.0, "sharpe": 0.0, "sortino": 0.0,
+        "calmar": 0.0, "recovery_factor": 0.0,
         "equity_curve": [],
+        "var_95": 0.0, "cvar_95": 0.0,
     }

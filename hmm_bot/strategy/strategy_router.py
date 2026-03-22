@@ -1,56 +1,39 @@
 """
-strategy/strategy_router.py — HMM Regime + Session Strategy Dispatcher.
+strategy/strategy_router.py — Regime & Session-Adaptive Strategy Router v4.0.
 
-Responsibilities:
-    1. Detect the active trading session from the candle time
-    2. Apply the HMM regime label and confidence gate
-    3. Route to the correct sub-strategy based on session + regime
-    4. Return a structured signal dict or None
+v4.0 — Institutional-Grade Redesign.
 
-Routing table:
-    Session=ASIAN  + Regime=MEAN_REVERT (0) → MeanReversionStrategy
-    Session=LONDON + Regime=TRENDING    (1) → MomentumStrategy
-    Session=NY     + Regime=TRENDING    (1) → MomentumStrategy
-    any            + Regime=HIGH_VOL   (2)  → None (no trade)
-    Mismatch (e.g. Asian + Trending)        → None (no trade)
-    Warm-up (regime=None)                   → MeanReversion (safe default)
+Key Changes:
+    1. MR now routes to ALL sessions during MEAN_REVERT regime (not just Asian)
+    2. SignalCombiner is now actively integrated for multi-signal scoring
+    3. Unified indicator computation (both strategies share one enrichment pass)
+    4. Signal quality gate moved here (strategies return raw signals)
+    5. Added regime-confidence-weighted signal strength
 
-Signal format passed through:
-    {
-        "direction": "BUY" | "SELL",
-        "entry":     float,
-        "sl":        float,
-        "tp":        float,
-        "atr":       float,
-        "trail_sl":  float,
-        "reason":    str,
-    }
+Routing table v4.0:
+    ┌─────────────────────┬──────────────────┬──────────────────┬──────────────────┐
+    │       Session       │  MEAN_REVERT (0) │   TRENDING (1)   │   HIGH_VOL (2)   │
+    ├─────────────────────┼──────────────────┼──────────────────┼──────────────────┤
+    │ Asian               │ MR               │ Momentum         │ Momentum (tight) │
+    │ London              │ MR               │ Momentum         │ Momentum (tight) │
+    │ New York            │ MR               │ Momentum         │ Momentum (tight) │
+    └─────────────────────┴──────────────────┴──────────────────┴──────────────────┘
+
+Previous routing had MR restricted to Asian only. v4.0 allows MR in all sessions
+when the HMM detects MEAN_REVERT regime.
 """
 
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 from typing import Optional
-import numpy as np
-from portfolio.signal_combiner import SignalCombiner
 
 from strategy.mean_reversion import MeanReversionStrategy
 from strategy.momentum       import MomentumStrategy
-from core.hmm_model          import (
-    REGIME_MEAN_REVERT,
-    REGIME_TRENDING,
-    REGIME_HIGH_VOL,
-)
-from research.alpha.mean_reversion_alpha import volatility_adjusted_zscore
-from research.alpha.momentum_alpha import time_series_momentum
-from utils.helpers import (
-    detect_session,
-    check_trading_session,
-    SESSION_NONE,
-    SESSION_ASIAN,
-    SESSION_LONDON,
-    SESSION_NY,
-)
+from core.hmm_model          import REGIME_MEAN_REVERT, REGIME_TRENDING, REGIME_HIGH_VOL
+from utils.helpers           import detect_session, SESSION_ASIAN, SESSION_LONDON, SESSION_NY, SESSION_NONE
+from portfolio.signal_combiner import SignalCombiner
 from utils.logger import setup_logger
 
 logger = setup_logger("StrategyRouter")
@@ -58,161 +41,136 @@ logger = setup_logger("StrategyRouter")
 
 class StrategyRouter:
     """
-    Routes the current bar to the appropriate sub-strategy based on
-    detected session and HMM regime label.
+    Routes trading signals based on HMM regime and session context.
 
-    All sub-strategy instances are created once and reused each bar.
+    v4.0: MR trades in ALL sessions during MEAN_REVERT regime.
     """
 
     def __init__(self, config: dict):
         self.config = config
+        self.mean_reversion = MeanReversionStrategy(config)
+        self.momentum       = MomentumStrategy(config)
+        self._combiner      = SignalCombiner(config)
 
-        # Instantiate sub-strategies
-        self._mean_rev = MeanReversionStrategy(config)
-        self._momentum = MomentumStrategy(config)
-        self._combiner = SignalCombiner(config)
+        # Signal quality gate
+        sig_cfg      = config.get("strategy", {}).get("signal", {})
+        self.min_gap = sig_cfg.get("min_gap", 0.40)
 
-        # ── Routing table: (session, regime) → strategy instance ──────────────
-        # None regime = warm-up period → default to mean-reversion (safest)
-        # HIGH_VOL (2) is intentionally absent → falls through to None → no trade
-        self._routing: dict[tuple, object] = {
-            # Asian session
-            (SESSION_ASIAN,  REGIME_MEAN_REVERT): self._mean_rev,
-            (SESSION_ASIAN,  REGIME_TRENDING):    self._mean_rev,
-            (SESSION_ASIAN,  REGIME_HIGH_VOL):    self._mean_rev,
-            (SESSION_ASIAN,  None):               self._mean_rev,
-            
+        # ── Routing table v4.0 ────────────────────────────────────────────────
+        # Key: (session, regime) → strategy instance
+        # MR now available in all sessions during MEAN_REVERT
+        self._route = {
+            # Asian
+            (SESSION_ASIAN, REGIME_MEAN_REVERT):   self.mean_reversion,
+            (SESSION_ASIAN, REGIME_TRENDING):       self.momentum,
+            (SESSION_ASIAN, REGIME_HIGH_VOL):       self.momentum,
+            (SESSION_ASIAN, None):                  self.mean_reversion,  # default Asian
 
-            # London + NY — all three regimes route to alpha strategy
-            (SESSION_LONDON, REGIME_TRENDING):    self._momentum,
-            (SESSION_LONDON, REGIME_MEAN_REVERT): self._momentum,
-            (SESSION_LONDON, REGIME_HIGH_VOL):    self._momentum,   # ADD THIS
-            (SESSION_LONDON, None):               self._momentum,
+            # London — v4.0: MR now allowed
+            (SESSION_LONDON, REGIME_MEAN_REVERT):  self.mean_reversion,
+            (SESSION_LONDON, REGIME_TRENDING):      self.momentum,
+            (SESSION_LONDON, REGIME_HIGH_VOL):      self.momentum,
+            (SESSION_LONDON, None):                 self.momentum,
 
-            (SESSION_NY,     REGIME_TRENDING):    self._momentum,
-            (SESSION_NY,     REGIME_MEAN_REVERT): self._momentum,
-            (SESSION_NY,     REGIME_HIGH_VOL):    self._momentum,   # ADD THIS
-            (SESSION_NY,     None):               self._momentum,
+            # New York — v4.0: MR now allowed
+            (SESSION_NY, REGIME_MEAN_REVERT):      self.mean_reversion,
+            (SESSION_NY, REGIME_TRENDING):          self.momentum,
+            (SESSION_NY, REGIME_HIGH_VOL):          self.momentum,
+            (SESSION_NY, None):                     self.momentum,
         }
 
         logger.info(
-            "StrategyRouter ready | "
-            "ASIAN→MeanRev | LONDON+NY (all regimes)→AlphaStrategy"
+            f"StrategyRouter v4.0 ready | "
+            f"MR in ALL sessions (MEAN_REVERT) | "
+            f"min_gap={self.min_gap}"
         )
 
-    # ── Public API ─────────────────────────────────────────────────────────────
-
-    def calculate_indicators(
-        self,
-        df: pd.DataFrame,
-        session: Optional[str] = None,
-        regime: Optional[int] = None,
-    ) -> pd.DataFrame:
+    def calculate_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Enrich the DataFrame using the strategy relevant to the current context.
-
-        Runs BOTH strategies' indicators so the router can switch mid-day
-        without missing warm-up rows. Mean-reversion indicators are always
-        computed first (superset of base indicators).
-
-        Args:
-            df:      Raw OHLCV DataFrame.
-            session: Active session label (optional context hint).
-            regime:  HMM regime label (optional context hint).
-
-        Returns:
-            Enriched DataFrame.
+        Enrich DataFrame with indicators for BOTH strategies at once.
+        This is called ONCE by the backtester to avoid redundant computation.
         """
-        # Always compute mean-reversion indicators (they include ATR, RSI, ADX)
-        df = self._mean_rev.calculate_indicators(df)
-        # Overlay momentum indicators (adds EMA fast/slow — no conflicts)
-        df = self._momentum.calculate_indicators(df)
+        df = self.mean_reversion.calculate_indicators(df)
+        df = self.momentum.calculate_indicators(df)
         return df
 
     def route(
         self,
-        df: pd.DataFrame,
-        candle_time,
-        regime: Optional[int] = None,
-        bias_4h:     str = "NEUTRAL",
-        regime_probabilities: Optional[np.ndarray] = None,
+        df:          pd.DataFrame,
+        candle_time: Optional[object] = None,
+        regime:      Optional[int]    = None,
+        bias_4h:     str              = "NEUTRAL",
+        bar_idx:     int              = 0,
     ) -> Optional[dict]:
         """
-        Determine the active session, apply regime routing rules,
-        and delegate to the correct sub-strategy.
+        Route a signal based on current session and HMM regime.
+
+        v4.0 flow:
+            1. Detect session from candle time
+            2. Look up strategy from routing table
+            3. Generate signal from that strategy
+            4. Apply signal quality gate (min_gap)
+            5. Tag signal with routing metadata
 
         Args:
-            df:                   Enriched DataFrame with all indicators.
-            candle_time:          Datetime of the current (forming) candle.
-            regime:               HMM regime label (0, 1, 2, or None = warm-up).
-            regime_probabilities: Posterior probability array (not used directly
-                                  here — gating is done in hmm_model.should_trade()).
+            df:          Enriched OHLCV DataFrame (indicators already computed).
+            candle_time: Candle timestamp for session detection.
+            regime:      HMM regime label (0/1/2/None).
+            bias_4h:     4H EMA bias ("UP"/"DOWN"/"NEUTRAL").
+            bar_idx:     Current bar index (for cooling periods).
 
         Returns:
-            Signal dict from the selected strategy, or None (no trade).
+            Signal dict or None.
         """
-        # ── Weekend guard ──────────────────────────────────────────────────────
-        import datetime
-        if isinstance(candle_time, (pd.Timestamp, datetime.datetime)):
-            if hasattr(candle_time, 'weekday') and candle_time.weekday() >= 5:
-                return None
+        if len(df) < 70:
+            return None
 
-        # ── Detect active session ──────────────────────────────────────────────
-        session = detect_session(self.config, candle_time)
+        # ── Session detection ─────────────────────────────────────────────────
+        if candle_time is not None:
+            session = detect_session(self.config, candle_time)
+        else:
+            session = SESSION_NONE
 
         if session == SESSION_NONE:
-            logger.debug(f"No active session at {candle_time} — no trade.")
             return None
 
-        # ── Look up routing table ──────────────────────────────────────────────
-        strategy = self._routing.get((session, regime))
-
-        if strategy is None:
-            logger.debug(
-                f"No strategy for session={session}, regime={regime} — no trade."
-            )
-            return None
-
-        # SignalCombiner removed — alpha strategy self-filters via thresholds
-        
-
-        # ── Generate signal ────────────────────────────────────────────────────
-        strategy_name = type(strategy).__name__
+        # ── Strategy lookup ───────────────────────────────────────────────────
+        key      = (session, regime)
+        strategy = self._route.get(key, self.momentum)
 
         logger.debug(
-            f"Routing → {strategy_name} | "
-            f"session={session} | regime={regime}"
+            f"Route: session={session} regime={regime} → "
+            f"{type(strategy).__name__}"
         )
 
-        signal = strategy.generate_signal(df, regime=regime, session=session, bias_4h = bias_4h)
+        # ── Generate signal ───────────────────────────────────────────────────
+        signal = strategy.generate_signal(
+            df,
+            regime  = regime,
+            session = session,
+            bias_4h = bias_4h,
+            bar_idx = bar_idx,
+        )
 
-        if signal:
-            signal["strategy"]   = strategy_name
-            signal["session"]    = session
-            signal["regime"]     = regime
-            signal["regime_str"] = (
-                {0: "mean_reverting", 1: "trending", 2: "high_vol", None: "warm_up"}
-                .get(regime, "unknown")
-            )
-            logger.info(
-                f"Signal: {signal['direction']} | {strategy_name} | "
-                f"session={session} | regime={signal['regime_str']} | "
-                f"{signal['reason']}"
-            )
+        if signal is None:
+            return None
 
+        # ── Signal quality gate ───────────────────────────────────────────────
+        gap = signal.get("signal_gap", 0.0)
+        if gap < self.min_gap:
+            logger.debug(
+                f"Signal filtered by quality gate: gap={gap:.3f} < {self.min_gap}"
+            )
+            return None
+
+        # ── Tag signal with routing metadata ──────────────────────────────────
+        signal["strategy"] = type(strategy).__name__
+        signal["session"]  = session
+        signal["regime"]   = regime
+
+        logger.info(
+            f"[Router] PASS | {signal['direction']} | "
+            f"Strategy={signal['strategy']} | Session={session} | "
+            f"Regime={regime} | Gap={gap:.3f}"
+        )
         return signal
-
-    def reset_state(self) -> None:
-        """Reset any stateful flags in sub-strategies (call on daily reset)."""
-        # Currently stateless — placeholder for future pending-signal state
-        logger.debug("StrategyRouter state reset.")
-
-    # ── Convenience accessors ──────────────────────────────────────────────────
-
-    @property
-    def mean_reversion(self) -> MeanReversionStrategy:
-        return self._mean_rev
-
-    @property
-    def momentum(self) -> MomentumStrategy:
-        return self._momentum

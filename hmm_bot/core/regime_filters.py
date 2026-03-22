@@ -1,116 +1,170 @@
 """
-core/regime_filters.py — Post-HMM regime validation and risk scaling.
+core/regime_filters.py — Post-HMM regime validation and risk scaling v4.0.
 
-Applies additional signal confirmation on top of the raw HMM regime label.
-Prevents trading during unstable regime transitions.
+Applies additional checks after HMM regime detection:
+    1. Regime stability — has the regime been consistent for N bars?
+    2. Risk scaling     — reduce position size in uncertain/volatile regimes
+    3. Confidence gate  — minimum HMM confidence to allow trading
+    4. Volatility band  — NEW: only trade when ATR is in P20-P80 range
 
-PLACEHOLDER: Methods are fully documented and structurally complete.
-Business logic will be wired in during Phase 2 (HMM integration).
+v4.0 changes:
+    - Added volatility_band_filter() for extreme-vol filtering
+    - Refined risk scaling multipliers for better capital utilization
 """
 
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
+from typing import Optional
+
+from core.hmm_model import REGIME_MEAN_REVERT, REGIME_TRENDING, REGIME_HIGH_VOL
 from utils.logger import setup_logger
 
 logger = setup_logger("RegimeFilters")
 
-# Regime label constants (matches hmm: regime_names in settings.yaml)
-REGIME_MEAN_REVERT = 0
-REGIME_TRENDING    = 1
-REGIME_HIGH_VOL    = 2
 
-# Risk scaling per regime — multiplied against base risk_per_trade
-REGIME_RISK_SCALE: dict[int, float] = {
-    REGIME_MEAN_REVERT: 1.0,   # Full risk in mean-reverting regime
-    REGIME_TRENDING:    0.75,  # Reduced risk — trend strategies less certain
-    REGIME_HIGH_VOL:    0.50,   # No trading in noisy/uncertain regime
-}
-
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. Regime stability check
+# ─────────────────────────────────────────────────────────────────────────────
 
 def is_regime_stable(
-    regime_history: list[int],
+    regime_history: list[Optional[int]],
+    current_idx: int,
     window: int = 5,
 ) -> bool:
     """
-    Check whether the regime has been consistent over the last `window` bars.
+    Check if the HMM regime has been consistent over the last `window` bars.
 
-    A regime is considered stable if all bars in the window share the same
-    label. This prevents trading immediately after a regime transition.
+    Returns True only if ALL bars in the window agree on the same regime.
+    This prevents trading during regime transitions.
 
     Args:
-        regime_history: List of integer regime labels, most recent last.
-        window:         Number of recent bars to check for consistency.
-
-    Returns:
-        True if stable, False during transitions.
+        regime_history: List of regime labels (0/1/2/None) for each bar.
+        current_idx:    Index of the current bar.
+        window:         Number of bars to check (default 5).
     """
-    if len(regime_history) < window:
-        logger.debug("Not enough regime history to evaluate stability.")
+    if current_idx < window:
         return False
 
-    recent = regime_history[-window:]
-    stable = len(set(recent)) == 1
+    recent = regime_history[max(0, current_idx - window + 1): current_idx + 1]
+    valid  = [r for r in recent if r is not None]
 
-    if not stable:
-        logger.info(
-            f"Regime unstable over last {window} bars: {recent}. Skipping signal."
-        )
-    return stable
+    if len(valid) < window:
+        return False
 
+    return len(set(valid)) == 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. Risk scaling by regime
+# ─────────────────────────────────────────────────────────────────────────────
 
 def apply_regime_risk_scaling(
-    regime: int,
+    regime:    int,
     base_risk: float,
 ) -> float:
     """
-    Scale the base risk percentage based on the current regime.
+    Adjust the base risk per trade based on the current HMM regime.
+
+    v4.0 multipliers:
+        MEAN_REVERT (0): 1.00× — full risk (strongest edge in ranging markets)
+        TRENDING    (1): 0.85× — slightly reduced (momentum can reverse fast)
+        HIGH_VOL    (2): 0.60× — significantly reduced (high-vol = high uncertainty)
+
+    Previous v2.2 used 0.75× for trending and 0.5× for high-vol, which was too
+    conservative and left alpha on the table in trending markets.
 
     Args:
-        regime:    Current regime label (0, 1, or 2).
-        base_risk: Base risk fraction from config (e.g. 0.01 = 1%).
+        regime:    HMM regime label (0, 1, 2).
+        base_risk: Base risk fraction from config (e.g. 0.01).
 
     Returns:
-        Adjusted risk fraction. Returns 0.0 for the noisy regime.
+        Adjusted risk fraction.
     """
-    scale = REGIME_RISK_SCALE.get(regime, 0.0)
+    SCALING = {
+        REGIME_MEAN_REVERT: 1.00,
+        REGIME_TRENDING:    0.85,
+        REGIME_HIGH_VOL:    0.60,
+    }
+
+    scale = SCALING.get(regime, 1.0)
     adjusted = base_risk * scale
 
     logger.debug(
-        f"Regime {regime} → risk scale {scale:.2f} "
-        f"| base {base_risk:.3f} → adjusted {adjusted:.3f}"
+        f"Risk scaling: regime={regime} scale={scale:.2f} "
+        f"base={base_risk:.4f} → adjusted={adjusted:.4f}"
     )
     return adjusted
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. Confidence gate
+# ─────────────────────────────────────────────────────────────────────────────
+
 def passes_regime_gate(
-    regime: int,
-    regime_probabilities: np.ndarray,
-    confidence_threshold: float = 0.65,
+    regime:    Optional[int],
+    confidence: float,
+    min_confidence: float = 0.65,
 ) -> bool:
     """
-    Final gate: only act if the HMM posterior probability of the predicted
-    regime exceeds the confidence threshold.
+    Check if the HMM regime classification has sufficient confidence to trade.
 
     Args:
-        regime:                 Predicted regime label.
-        regime_probabilities:   Posterior probability array from HMM.
-        confidence_threshold:   Minimum confidence required (from config).
+        regime:         Classified regime (0/1/2/None).
+        confidence:     HMM posterior probability of the predicted regime.
+        min_confidence: Minimum acceptable confidence (default 0.65 = 65%).
 
     Returns:
-        True if confidence is sufficient to trade.
+        True if the regime is known and confident enough to trade.
     """
-    if regime >= len(regime_probabilities):
-        logger.warning(f"Regime {regime} out of range for probability array.")
+    if regime is None:
+        logger.debug("Regime gate: regime=None → FAIL (warm-up)")
         return False
 
-    confidence = float(regime_probabilities[regime])
-
-    if confidence < confidence_threshold:
-        logger.info(
-            f"Regime {regime} confidence {confidence:.2%} below "
-            f"threshold {confidence_threshold:.2%}. Skipping."
+    if confidence < min_confidence:
+        logger.debug(
+            f"Regime gate: confidence={confidence:.2f} < {min_confidence:.2f} → FAIL"
         )
+        return False
+
+    return True
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. Volatility band filter (NEW v4.0)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def volatility_band_filter(
+    atr_percentile: float,
+    low_cutoff:  float = 0.15,
+    high_cutoff: float = 0.85,
+) -> bool:
+    """
+    Only trade when ATR is within a normal volatility band.
+
+    Rationale:
+        - Extremely low vol (< P15): spreads dominate profits, poor risk-reward
+        - Extremely high vol (> P85): stop-loss slippage risk, unpredictable
+        - Normal vol (P15-P85): best regime for systematic strategies
+
+    Args:
+        atr_percentile: ATR's rolling percentile rank (0.0 - 1.0).
+        low_cutoff:     Minimum ATR percentile to trade (default 0.15 = P15).
+        high_cutoff:    Maximum ATR percentile to trade (default 0.85 = P85).
+
+    Returns:
+        True if volatility is within the acceptable band.
+    """
+    if np.isnan(atr_percentile):
+        return True  # allow trading if percentile not computed yet
+
+    if atr_percentile < low_cutoff:
+        logger.debug(f"Vol band: pctile={atr_percentile:.2f} < {low_cutoff} → SKIP (too quiet)")
+        return False
+
+    if atr_percentile > high_cutoff:
+        logger.debug(f"Vol band: pctile={atr_percentile:.2f} > {high_cutoff} → SKIP (too volatile)")
         return False
 
     return True
