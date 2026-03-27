@@ -1,223 +1,110 @@
 project:
   name: "HMM Adaptive Trading Bot"
-  version: "5.0.0"
+  version: "2.0.0"
   magic_number: 234567
 
 
 mtf:
-  bias_tf:    "H4"
-  regime_tf:  "H1"
-  signal_tf:  "M15"
-  entry_tf:   "M1"
+  bias_tf:    "H4"    # 4H trend direction
+  regime_tf:  "H1"    # 1H HMM input
+  signal_tf:  "M15"   # 15M alpha signal
+  entry_tf:   "M1"    # 1M execution
   bias_ema_fast: 50
   bias_ema_slow: 200
 
 trading:
   symbol: "EURUSD"
-<<<<<<< HEAD
   timeframe: "M15"
-  risk_per_trade: 0.01          # v5.0: halved from 1% → 0.5% (precision sizing)
-=======
-  timeframe: "M5"
-  risk_per_trade: 0.005          # v5.0: halved from 1% → 0.5% (precision sizing)
->>>>>>> feature/improvement1
-  max_daily_drawdown_pct: 0.02   # v5.0: tighter 2% daily (was 3%)
-  max_total_drawdown_pct: 0.15
+  risk_per_trade: 0.01          # 1 % per trade
+  max_daily_drawdown_pct: 0.03   # 3% (legacy key — also in risk:)
+  max_total_drawdown_pct: 0.15   # 15% (legacy key)
   risk_reward_ratio: 2.0
+  leverage: 100
 
 # ── Strategy Parameters ───────────────────────────────────────────────────────
 strategy:
-  # Shared indicator periods
+  # Shared
   rsi_period: 14
   atr_period: 14
   adx_period: 10
   vwap_window: 21
-  vwap_window_slow: 50
-  atr_avg_window: 50         # NEW: moving average window for ATR
-  ou_window: 60              # NEW: OU half-life calculation window
-  slope_window: 5            # NEW: window for calculating EMA slopes
   hurst_threshold: 0.45
 
   alpha:
-<<<<<<< HEAD
-    threshold_percentile: 65
-    tp_vol_mult: 4.0          # Ultra Scalp TP
-    sl_vol_mult: 2.0             # Normal SL to avoid 60-pip massacres
-    min_sl_pips: 0.00060         # 6-pip floor
-    min_edge_pips: 0.00015
-    min_combined_score: 1.50
-    combined_threshold: 0.40
-    mr_mom_filter: 1.5           
-    trend_pullback: 1.0       
-
-  # Mean Reversion — v5.0: wider SL, achievable TP
-  mean_reversion:
-    z_score_trigger: 1.7         # Lowered to capture realistic bounce zones
-    z_slow_trigger: 1.0
-    z_score_exit: 0.0            # Exit exactly at mean
-    rsi_overbought: 65
-    rsi_oversold:   35
-    ema_slope_flat: 0.0005
-    adx_max: 25
-    sl_atr_mult: 3.5             # Fat stop loss to endure noise
-    min_sl_pips: 0.00100
-    max_sl_pips: 0.00400
-    trail_atr_mult: 1.5
-    min_rr: 0.5                  # Allow sub-1RR to guarantee high win rate scalps
-    min_tp_atr_mult: 0.8         # Extremely conservative TP target
-    bar_confirm: true
-    cooling_bars: 4
-    ou_max_half_life: 40
-    min_atr_ratio: 0.8
-
-  # Momentum — v5.0: precision entries, wider SL, achievable TP
-  momentum:
-    adx_min: 15                  # Pick up momentum earlier
-    di_separation: 8
-    ema_period_fast: 21
-    ema_period_slow: 50
-    ema_period_base: 100
-    rsi_overbought: 75           # Give momentum room to run
-    rsi_oversold: 25
-    min_rr: 0.5                  # Sub-1RR perfectly acceptable on HMM filtered signals
-
-    # SL/TP
-    sl_atr_mult: 3.5             # Fat stop
-    tp_atr_mult: 1.5             # Achievable TP (1.5 ATR is approx 20 pips on M15)
-    trail_atr_mult: 1.2          # Aggressive trail
-    min_sl_pips: 0.00100
-    max_sl_pips: 0.00400
-    cooling_bars: 4
-    min_atr_ratio: 0.8
-
-    # Momentum thresholds
-    mom_threshold: 1.5         
-    mom_trend_threshold: 1.2
-=======
     threshold_percentile: 70
     tp_vol_mult: 6.0
-    sl_vol_mult: 4.5
-    min_sl_pips: 0.00150         # v5.0: 15-pip floor (was 10)
+    sl_vol_mult: 3.0
     min_edge_pips: 0.00015
-    min_combined_score: 1.50
-    combined_threshold: 0.40
-    # NEW: Alpha feature lookback windows
-    vol_fast: 10
-    vol_slow: 50
-    z_window: 20
-    mom_fast: 5
-    mom_slow: 20
-    mom_long: 60
+    min_combined_score: 1.80 
 
-  # Mean Reversion
+  # Mean Reversion (Asian + MEAN_REVERT regime)
   mean_reversion:
-    ema_period: 50               # NEW: EMA period for flat check
-    z_score_trigger: 2.0         # v5.0: raised from 1.8 → 2.0 (higher conviction)
-    z_slow_trigger: 1.2          # v5.0: raised from 1.0 → 1.2
-    z_score_exit: 0.0
-    rsi_overbought: 65           # v5.0: was 60 → 65 (need stronger signal)
-    rsi_oversold:   35           # v5.0: was 40 → 35
-    ema_slope_flat: 0.0005
-    adx_max: 20
-    sl_atr_mult: 2.0             # Fat stop loss to endure noise
-    min_sl_pips: 0.00150
-    max_sl_pips: 0.00400
-    trail_atr_mult: 1.5
-    min_rr: 1.0                  # Allow sub-1RR to guarantee high win rate scalps
-    min_tp_atr_mult: 1.5         # Extremely conservative TP target
-    bar_confirm: true
-    cooling_bars: 3
-    ou_max_half_life: 40
-    min_atr_ratio: 0.8
+    z_score_trigger: 2.3         # |Z| >= this to consider entry
+    z_score_exit: 0.0            # Z returns here → TP = rolling mean
+    rsi_overbought: 60           # RSI must exceed this for SELL
+    rsi_oversold: 40             # RSI must be below this for BUY
+    ema_slope_flat: 0.25      # |EMA50 slope| must be <= this (flat)
+    adx_max: 16                  # ADX must be < this (no strong trend)
+    sl_atr_mult: 2.0             # SL = ATR * sl_atr_mult
+    trail_atr_mult: 1.5          # Trailing stop = ATR * trail_atr_mult
+    min_rr: 1.3
+    tp_atr_floor_mult: 3.0
 
-  # Momentum
+  # Momentum (London/NY + TRENDING regime)
   momentum:
-    adx_min: 15                  # Pick up momentum earlier
-    di_separation: 8
-    ema_period_fast: 20
-    ema_period_slow: 50
-    ema_period_base: 200
-    rsi_overbought: 70           # Give momentum room to run
-    rsi_oversold: 30
-    min_rr: 1.0
-
-    # SL/TP
-    sl_atr_mult: 1.5             # Fat stop
-    tp_atr_mult: 2.0             # Achievable TP (1.5 ATR is approx 20 pips on M15)
-    trail_atr_mult: 1.5          # Aggressive trail
-    min_sl_pips: 0.00150
-    max_sl_pips: 0.00400
-    cooling_bars: 3
-    min_atr_ratio: 0.8
-
-    # Momentum thresholds — v5.0: higher bar for entry
-    mom_threshold: 1.5           # v5.0: raised from 1.0 → 1.5
-    mom_trend_threshold: 1.2     # lower in confirmed trending regime
->>>>>>> feature/improvement1
-
-    breakeven_atr: 1.0
-
-  # Signal Quality Gate — v5.0: higher bar
-  signal:
-    min_gap: 0.50                # v5.0: raised from 0.40 → 0.50
-    cooling_bars: 6
+    adx_min: 25                  # ADX must be >= this (trending)
+    ema_fast: 21                  # Fast EMA for trend direction
+    ema_slow: 50                 # Slow EMA for baseline trend
+    rsi_trend_low: 45            # RSI long filter (> 40 for BUY)
+    rsi_trend_high: 55           # RSI short filter (< 60 for SELL)
+    sl_atr_mult: 5.0             # SL = ATR * sl_atr_mult
+    tp_atr_mult: 10.0             # TP = ATR * tp_atr_mult
+    trail_atr_mult: 3.0          # Trailing stop = ATR * trail_atr_mult
 
 # ── Session Windows (broker candle time) ─────────────────────────────────────
 sessions:
-  asian_start:    "02:00"
-  asian_end:      "09:00"
-  london_start:   "09:00"
-  london_end:     "12:00"
-  newyork_start:  "12:00"
-  newyork_end:    "21:00"
+  asian_start: "02:00"
+  asian_end:   "09:00"
+  london_start: "09:00"
+  london_end:   "14:00"          
+  newyork_start: "12:00"         
+  newyork_end:   "21:00"
 
 filters:
   max_spread_pips: 2.0
-<<<<<<< HEAD
-  min_volatility_percentile: 0.20
-  max_volatility_percentile: 0.80
-=======
-  min_volatility_percentile: 0.15
-  max_volatility_percentile: 0.85
->>>>>>> feature/improvement1
+  min_volatility_percentile: 0.2 #Minimum volatility percentile 
+  max_volatility_percentile: 0.8 #Maximum volatility percentile
 
 execution:
   order_comment: "HMM Bot"
-  slippage_pips: 2
-  deviation: 20
+  slippage_pips: 2 #Maximum price difference allowed between requested price and executed price.
+  deviation: 20 #allowing the slippage 2*10 = 20 pips
 
 # ── Date-Based Backtesting ────────────────────────────────────────────────────
 backtest:
-  start_date:   "2020-01-24"
-  end_date:     "2026-01-01"
-  train_split:  0.70
-  cache_dir:    "data/cache"
-  force_refetch: false
+  start_date:   "2020-01-24"      # Format: YYYY-MM-DD
+  end_date:     "2026-01-01"      # Format: YYYY-MM-DD
+  train_split:  0.65              # 70% train, 30% test
+  cache_dir:    "data/cache"      # Where to store Parquet cache files
+  force_refetch: false            # Set true to ignore cache and re-fetch
 
-# ── Risk Management — v5.0: tighter controls ─────────────────────────────────
+# ── Risk Management ──────────────────────────────────────────────────────────
 risk:
-  risk_per_trade: 0.005          # v5.0: 0.5% risk per trade (was 1%)
-  max_daily_drawdown_pct: 0.02   # v5.0: 2% daily max (was 3%)
-  max_account_drawdown_pct: 0.15
-  max_consecutive_losses: 2      # v5.0: strict 2-loss limit → stop for day
-  var_confidence: 0.95
+  risk_per_trade: 0.01            # 1% risk per trade
+  max_daily_drawdown_pct: 0.03     # 3%  — disable today
+  max_account_drawdown_pct: 0.15   # 15% — permanent shutdown
+  max_consecutive_losses: 2        # Disable day after 2 SLs in a row
 
 # ── HMM Regime Detection ──────────────────────────────────────────────────────
 hmm:
-  n_components: 3
-  n_iter: 300
-  covariance_type: "full"
-  confidence_threshold: 0.65
-  min_confidence_trade: 0.60
+  n_components: 3 # Number of regimes
+  n_iter: 250 # Number of iterations for training - Expectation-Maximization (EM
+  covariance_type: "diag" # Type of covariance matrix
+  confidence_threshold: 0.65 # Confidence threshold for regime detection
   regime_names:
     0: "mean_reverting"
     1: "trending"
     2: "high_volatility"
   model_path: "models/hmm.pkl"
-<<<<<<< HEAD
-  feature_lookback: 60000
-  retrain_interval: 10000
-=======
-  feature_lookback: 40000
-  retrain_interval: 8000
->>>>>>> feature/improvement1
+  feature_lookback: 20000 # Number of bars to look back for feature extraction
+  retrain_interval: 5000 # Number of bars to look back for feature extraction new candles
