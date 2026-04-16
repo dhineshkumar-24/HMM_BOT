@@ -56,6 +56,7 @@ class MomentumStrategy(StrategyBase):
         regime:  Optional[int] = None,
         session: Optional[str] = None,
         bias_4h:   str = "NEUTRAL",
+        bar_idx: int = 0,
     ) -> Optional[dict]:
 
         if len(df) < 120:

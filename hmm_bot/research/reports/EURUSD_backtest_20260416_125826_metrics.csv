@@ -1,0 +1,2 @@
+passed,rules,total_trades,win_count,loss_count,win_rate,net_profit,gross_profit,gross_loss,avg_win,avg_loss,profit_factor,expectancy,max_drawdown,sharpe,sortino,calmar,recovery_factor,var_95,cvar_95
+False,"{'min_trades': False, 'win_rate': False, 'profit_factor': False, 'max_drawdown': True}",0,0,0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
